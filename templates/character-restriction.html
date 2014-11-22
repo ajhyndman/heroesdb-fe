@@ -1,0 +1,4 @@
+<div class="character-restriction" ng-class="{ 'enabled': enabledCharacters, 'disabled': !enabledCharacters }" ng-if="ready">
+	<span ng-if="characters.length == 0">Every</span>
+	<span ng-if="!enabledCharacters">Not</span><abbr ng-repeat="character in characters" title="{{character.name}}">{{character.initial}}</abbr>
+</div>

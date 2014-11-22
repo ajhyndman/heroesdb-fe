@@ -1,0 +1,41 @@
+<div class="items-list-container">
+	<table class="items-list">
+		<thead>
+			<tr>
+				<th colspan="2">
+					<div class="name" ng-click="itemsList.order('name')" flex>Item</div>
+				</th>
+				<th ng-repeat="column in itemsList.columns | orderBy:'order'">
+					<div layout="horizontal">
+						<div class="name" ng-click="itemsList.order(column.id)" flex>{{column.shortName}}</div>
+						<div class="menu" ng-mouseleave="itemsList.hideFilters()">
+							<i class="open fa fa-caret-down" ng-click="itemsList.showFilter(column.id)"></i>
+							<ol class="filters z2" ng-show="column.filterOpen">
+								<li ng-repeat="filter in column.filters" ng-click="filter.toggle()">
+									<i class="fa" ng-class="{ 'fa-check-square-o': filter.enabled, 'fa-square-o': !filter.enabled }"></i>
+									<span>{{filter.name}}</span>
+								</li>
+							</ol>
+						</div>
+					</div>
+				</th>
+			</tr>
+		</thead>
+		<tbody ng-if="itemsList.items.length == 0">
+			<tr><td class="empty" colspan="{{2 + itemsList.columns.length}}">No items found.</td></tr>
+		</tbody>
+		<tbody ng-if="itemsList.items.length > 0">
+			<tr class="animate-repeat" ng-repeat="item in itemsList.items" ng-click="itemsList.selectItem(item.id)" ng-class="{ 'selected': item.id == itemsList.selectedItem }">
+				<td><item-icon icon-id="{{item.iconId}}" item-hovercard="{{item.id}}" /></td>
+				<td>
+					<span class="name rarity{{item.rarity}}">{{item.name}}</span>
+					<div class="description" ng-if="itemsList.columns.length == 0">{{item.description}}</div>
+				</td>
+				<td ng-repeat="column in itemsList.columns | orderBy:'order'">
+					<span ng-if="column.type != 'ClassRestriction'">{{item.stats[column.id]}}</span>
+					<span ng-if="column.type == 'ClassRestriction'"><character-restriction characters="{{item.stats[column.id]}}" /></span>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+</div>
