@@ -24,8 +24,8 @@
 		<tbody class="empty" ng-if="table.objects.length == 0">
 			<tr><td colspan="{{2 + table.columns.length}}">No items found.</td></tr>
 		</tbody>
-		<tbody ng-if="table.objects.length > 0"><!--TODO animate-repeat?-->
-			<tr class="animate-repeat" ng-repeat="object in table.objects" ng-click="table.selectObject(object.key)" ng-class="{ 'selected': object.key == table.selectedObjectKey }">
+		<tbody ng-if="table.objects.length > 0">
+			<tr ng-repeat="object in table.objects" ng-click="table.selectObject(object.key)" ng-class="{ 'selected': object.key == table.selectedObjectKey }">
 				<td>
 					<div class="icon" object-hovercard="{{object.type}}.{{object.key}}">
 						<img width="40" height="40" ng-src="/data/icons/{{object.iconID ? object.iconID : 0}}.png" />
