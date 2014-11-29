@@ -1,0 +1,21 @@
+<div id="menu-container">
+	<table id="menu">
+		<tr class="group-first-row" ng-repeat-start="group in menu.classification.groups">
+			<td class="group" rowspan="{{group.types.length}}">{{group.name}}</td>
+			<td class="type">
+				<a ui-sref-active="active" ui-sref="items.group-type({ groupKey: group.key, typeKey: group.types[0].key })">{{group.types[0].name}}</a>
+			</td>
+			<td class="category">
+				<a ng-repeat="category in group.types[0].categories" ui-sref-active="active" ui-sref="items.group-type-category({ groupKey: group.key, typeKey: group.types[0].key, categoryKey: category.key })">{{category.name}}</a>
+			</td>
+		</tr>
+		<tr ng-repeat-end="" ng-repeat="type in group.types" ng-if="$index > 0">
+			<td class="type">
+				<a ui-sref-active="active" ui-sref="items.group-type({ groupKey: group.key, typeKey: type.key })">{{type.name}}</a>
+			</td>
+			<td class="category">
+				<a ng-repeat="category in type.categories" ui-sref-active="active" ui-sref="items.group-type-category({ groupKey: group.key, typeKey: type.key, categoryKey: category.key })">{{category.name}}</a>
+			</td>
+		</tr>
+	</table>
+</div>

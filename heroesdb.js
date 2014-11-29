@@ -2,12 +2,21 @@
 (function() {
 	'use strict';
 
-	var app = angular.module('heroesdb', ['ngResource', 'ngAnimate', 'ui.router'])
+	var app = angular.module('heroesdb', ['ngResource', 'ngAnimate', 'ui.router']);
 
-	config.$inject = ['$stateProvider', '$locationProvider', '$urlRouterProvider'];
-	function config($stateProvider, $locationProvider, $urlRouterProvider) {
+	//app.run(['$rootScope', function($rootScope) {
+	//	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) { console.log('$stateChangeStart to ' + toState.name); });
+	//	$rootScope.$on('$stateChangeError', function(event, toState, toParams, fromState, fromParams) { console.log('$stateChangeError'); });
+	//	$rootScope.$on('$stateChangeSuccess', function(event, toState, toParams, fromState, fromParams) { console.log('$stateChangeSuccess to ' + toState.name); });
+	//	$rootScope.$on('$viewContentLoaded', function(event) { console.log('$viewContentLoaded'); });
+	//	$rootScope.$on('$stateNotFound', function(event, unfoundState, fromState, fromParams) { console.log('$stateNotFound ' + unfoundState.to); });
+	//}]);
+
+
+	config.$inject = ['$stateProvider', '$locationProvider', '$urlRouterProvider', '$httpProvider'];
+	function config($stateProvider, $locationProvider, $urlRouterProvider, $httpProvider) {
 		$locationProvider.html5Mode({
-			enabled: false,
+			enabled: true,
 			requireBase: false
 		});
 		$urlRouterProvider.otherwise("/items");
@@ -17,69 +26,93 @@
 			controller: 'ItemsController',
 			controllerAs: 'items'
 		});
-		var itemsListResolve = {
-			groups: ['ItemGroups', function(ItemGroups) { return ItemGroups.get().$promise; }],
-			stats: ['ItemStats', function(ItemStats) { return ItemStats.get().$promise; }],
-			items: ['TypeItems', '$stateParams', function(TypeItems, $stateParams) { return TypeItems.get(Number($stateParams.typeId)).$promise; }],
-			characters: ['Characters', function(Characters) { return Characters.get().$promise; }]
+		var objectsTableResolve = {
+			classification: ['Classification', function(Classification) { return Classification.get().$promise; }],
+			objectList: ['ObjectList', '$stateParams', function(ObjectList, $stateParams) { return ObjectList.get($stateParams.groupKey, $stateParams.typeKey).$promise; }]
 		};
 		$stateProvider.state('items.group-type', {
-			url: '/{groupId:[0-9]}/{typeId:[0-9]+}',
-			templateUrl: '/templates/items-list.html',
-			controller: 'ItemsListController',
-			controllerAs: 'itemsList',
-			resolve: itemsListResolve
+			url: '/{groupKey}/{typeKey}',
+			templateUrl: '/templates/objects-table.html',
+			controller: 'ObjectsTableController',
+			controllerAs: 'table',
+			resolve: objectsTableResolve
 		});
 		$stateProvider.state('items.group-type-category', {
-			url: '/{groupId:[0-9]+}/{typeId:[0-9]+}/{categoryId:[0-9]+}',
-			templateUrl: '/templates/items-list.html',
-			controller: 'ItemsListController',
-			controllerAs: 'itemsList',
-			resolve: itemsListResolve
+			url: '/{groupKey}/{typeKey}/{categoryKey}',
+			templateUrl: '/templates/objects-table.html',
+			controller: 'ObjectsTableController',
+			controllerAs: 'table',
+			resolve: objectsTableResolve
 		});
+		$httpProvider.interceptors.push('LoadingStatus');
 	};
 	app.config(config);
 
 
+	app.factory('LoadingStatus', LoadingStatusService);
 	app.factory('Characters', CharactersService);
-	app.factory('ItemGroups', ItemGroupsService);
-	app.factory('ItemStats', ItemStatsService);
-	app.factory('TypeItems', TypeItemsService);
-	app.factory('Item', ItemService);
-	app.factory('ItemHovercard', ItemHovercardService);
+	app.factory('Classification', ClassificationService);
+	app.factory('ObjectList', ObjectListService);
+	app.factory('Object', ObjectService);
+	app.factory('ObjectProperties', ObjectPropertiesService);
+	app.factory('ObjectHovercard', ObjectHovercardService);
 
-	app.directive('itemsFilter', itemsFilterDirective);
+	app.directive('objectsTableMenu', objectsTableMenuDirective);
 	app.directive('characterRestriction', characterRestrictionDirective);
-	app.directive('itemIcon', itemIconDirective);
-	app.directive('itemHovercard', itemHovercardDirective);
+	app.directive('objectHovercard', objectHovercardDirective);
 
 	app.controller('ItemsController', ItemsController);
-	app.controller('ItemsFilterController', ItemsFilterController);
-	app.controller('ItemsListController', ItemsListController);
+	app.controller('ObjectsTableMenuController', ObjectsTableMenuController);
+	app.controller('ObjectsTableController', ObjectsTableController);
 
+
+	LoadingStatusService.$inject = ['$rootScope', '$q'];
+	function LoadingStatusService($rootScope, $q) {
+		$rootScope.loading = false;
+		var activeRequests = 0;
+		return {
+			request: function(config) {
+				activeRequests += 1;
+				$rootScope.loading = true;
+				return config || $q.when(config);
+			},
+			response: function(response) {
+				if ((activeRequests -= 1) == 0) {
+					$rootScope.loading = false;
+				}
+				return response || $q.when(response);
+			},
+			responseError: function(rejection) {
+				if ((activeRequests -= 1) == 0) {
+					$rootScope.loading = false;
+				}
+				return $q.reject(rejection);
+			}
+		}
+	};
 
 	CharactersService.$inject = ['$resource'];
 	function CharactersService($resource) {
 		var self = this;
-		self.data;
-		self.characterInitials;
+		self.characters = null;
+		self.initials = null;
 		self.get = function() {
-			if (!self.data) {
-				self.data = $resource('/data/characters.json').query();
+			if (self.characters == null) {
+				self.characters = $resource('/data/characters.json').query();
 			}
-			return self.data;
+			return self.characters;
 		};
 		self.getInitials = function() {
-			if (!self.characterInitials) {
-				self.characterInitials = {};
-				var characters = self.data;
+			if (self.initials == null) {
+				self.initials = {};
 				var characterInitialLength = {};
 				var initialCharacters = {};
-				var s = 0;
-				for (var i = 0; i < characters.length; i++) {
-					s++;
-					if (s > 100) break;
-					var character = characters[i];
+				var safety = 1;
+				for (var i = 0; i < self.characters.length; i += 1) {
+					if (safety++ > 1000) {
+						break;
+					}
+					var character = self.characters[i];
 					if (!(character.id in characterInitialLength)) {
 						characterInitialLength[character.id] = 1;
 					}
@@ -96,10 +129,10 @@
 					}
 				}
 				for (var initial in initialCharacters) {
-					self.characterInitials[initialCharacters[initial]] = initial;
+					self.initials[initialCharacters[initial]] = initial;
 				}
 			}
-			return self.characterInitials;
+			return self.initials;
 		};
 		return {
 			get: self.get,
@@ -107,113 +140,140 @@
 		};
 	};
 
-	ItemGroupsService.$inject = ['$resource'];
-	function ItemGroupsService($resource) {
+	ClassificationService.$inject = ['$resource'];
+	function ClassificationService($resource) {
 		var self = this;
-		self.data;
+		self.classification = null;
 		self.get = function() {
-			if (!self.data) {
-				self.data = $resource('/data/item-groups.json').query();
+			if (self.classification == null) {
+				self.classification = $resource('/data/classification.json').get();
 			}
-			return self.data;
+			return self.classification;
 		};
 		return { get: self.get };
 	};
 
-	ItemStatsService.$inject = ['$resource'];
-	function ItemStatsService($resource) {
+	ObjectListService.$inject = ['$resource'];
+	function ObjectListService($resource) {
 		var self = this;
-		self.data;
+		self.objectLists = {};
+		self.get = function(categoryKey, typeKey) {
+			var key = categoryKey + '-' + typeKey;
+			if (!(key in self.objectLists)) {
+				self.objectLists[key] = $resource('/data/objects/:key.json', { key: '@key' }).query({ key: key });
+			}
+			return self.objectLists[key];
+		};
+		return { get: self.get };
+	};
+
+	ObjectService.$inject = ['$resource'];
+	function ObjectService($resource, $http) {
+		var self = this;
+		self.objects = {};
+		self.get = function(type, key) {
+			type = type + 's';
+			if (!(type in self.objects)) {
+				self.objects[type] = {}
+			}
+			if (!(key in self.objects[type])) {
+				self.objects[type][key] = $resource('/data/objects/:type/:key.json', { type: '@type', key: '@key' }).get({ type: type, key: key });
+			}
+			return self.objects[type][key];
+		};
+		return { get: self.get };
+	};
+
+	ObjectPropertiesService.$inject = [];
+	function ObjectPropertiesService() {
+		var self = this;
+		self.objectProperties = [
+			{ key: 'atk', name: 'Attack', shortName: 'ATT', base: false },
+			{ key: 'patk', name: 'Attack', shortName: 'ATT', base: true },
+			{ key: 'matk', name: 'Magic Attack', shortName: 'M.ATT', base: true },
+			{ key: 'speed', name: 'Attack Speed', shortName: 'AS', base: true },
+			{ key: 'crit', name: 'Critical Chance', shortName: 'CRIT', base: true },
+			{ key: 'bal', name: 'Balance', shortName: 'BAL', base: true },
+			{ key: 'def', name: 'Defence', shortName: 'DEF', base: true },
+			{ key: 'str', name: 'Strength', shortName: 'STR', base: true },
+			{ key: 'int', name: 'Intelligence', shortName: 'INT', base: true },
+			{ key: 'dex', name: 'Agility', shortName: 'AGI', base: true },
+			{ key: 'will', name: 'Willpower', shortName: 'WILL', base: true },
+			{ key: 'hp', name: 'Health Points', shortName: 'HP', base: true },
+			{ key: 'critres', name: 'Critical Resistance', shortName: 'CRITRES', base: true },
+			{ key: 'stamina', name: 'Stamina', shortName: 'Stamina', base: true },
+			{ key: 'requiredLevel', name: 'Required Level', shortName: 'Level', base: false },
+			{ key: 'classRestriction', name: 'Character Restriction', shortName: 'Character', base: false }
+		];
 		self.get = function() {
-			if (!self.data) {
-				self.data = $resource('/data/item-stats.json').query();
-			}
-			return self.data;
+			return self.objectProperties;
 		};
 		return { get: self.get };
 	};
 
-	TypeItemsService.$inject = ['$resource'];
-	function TypeItemsService($resource) {
+	ObjectHovercardService.$inject = ['$document', '$rootScope', '$compile', '$q', '$filter', '$timeout', 'Object', 'ObjectProperties', 'Characters'];
+	function ObjectHovercardService($document, $rootScope, $compile, $q, $filter, $timeout, Object, ObjectProperties, Characters) {
 		var self = this;
-		self.data = {};
-		self.get = function(typeId) {
-			if (!self.data[typeId]) {
-				self.data[typeId] = $resource('/data/type-items/:typeId.json', { typeId: '@typeId' }).query({ typeId: typeId });
-			}
-			return self.data[typeId];
-		};
-		return { get: self.get };
-	};
-
-	ItemService.$inject = ['$resource'];
-	function ItemService($resource) {
-		var self = this;
-		self.data = {};
-		self.get = function(itemId) {
-			if (!self.data[itemId]) {
-				self.data[itemId] = $resource('/data/items/:itemId.json', { itemId: '@itemId' }).get({ itemId: itemId });
-			}
-			return self.data[itemId];
-		};
-		return { get: self.get };
-	};
-
-	ItemHovercardService.$inject = ['$document', '$rootScope', '$compile', '$q', '$filter', '$timeout', 'Item', 'ItemStats', 'Characters'];
-	function ItemHovercardService($document, $rootScope, $compile, $q, $filter, $timeout, Item, ItemStats, Characters) {
-		var self = this;
-		self.id = null;
+		self.objectTypeKey = null;
 		self.visible = false;
 		self.scope = $rootScope.$new(true);
 		self.scope.visible = false;
 
 		var body = $document.find('body');
-		body.append('<div class="item-hovercard-container" ng-include="\'/templates/item-hovercard.html\'"></div>');
+		body.append('<div class="object-hovercard-container" ng-include="\'/templates/object-hovercard.html\'"></div>');
 		var element = body[0].lastChild;
 		$compile(element)(self.scope);
 
-		var show = function(itemId, style) {
-			self.id = itemId;
+		var show = function(objectTypeKey, style) {
+			self.objectTypeKey = objectTypeKey;
 			self.visible = true;
 			var query = $q.all([
-				Item.get(itemId).$promise,
-				ItemStats.get().$promise,
+				Object.get(objectTypeKey.split('.')[0], objectTypeKey.split('.')[1]).$promise,
+				ObjectProperties.get(),
 				Characters.get().$promise
 			]);
 			query.then(function(data) {
-				if (self.id == itemId && self.visible) {
-					var item = data[0];
-					var stats = data[1];
+				if (self.objectTypeKey == objectTypeKey && self.visible) {
+					var object = data[0];
+					var objectProperties = data[1];
 					var characters = data[2];
-					self.scope.item = item;
-					self.scope.itemStats = $filter('filter')(stats, function(stat) {
-						var itemHasStat = item.stats[stat.id] || 0 > 0;
-						var isGuiStat = stat.type == 'Base';
-						return itemHasStat && isGuiStat;
-					});
-					self.itemStats = $filter('orderBy')(self.itemStats, 'order');
-					var requiredLevelStat;
-					var classRestrictionStat;
-					for (var i = 0; i < stats.length; i++) {
-						if (stats[i].type == 'RequiredLevel') {
-							requiredLevelStat = stats[i].id;
-						}
-						else if (stats[i].type == 'ClassRestriction') {
-							classRestrictionStat = stats[i].id;
+					self.scope.iconID = object.iconID;
+					self.scope.rarity = object.rarity;
+					self.scope.name = object.name;
+					self.scope.description = object.description;
+					self.scope.set = ('set' in object) ? object.set : null;
+					self.scope.requiredLevel = object.requiredLevel;
+					self.scope.requiredSkills = object.requiredSkills;
+					self.scope.stats = [];
+					for (var i = 0; i < objectProperties.length; i++) {
+						var property = objectProperties[i];
+						if (property.base == true && object[property.key] > 0) {
+							self.scope.stats.push({ name: property.shortName, value: object[property.key] });
 						}
 					}
-					self.scope.item.requiredLevel = item.stats[requiredLevelStat];
-					var classRestriction = [];
+					self.scope.parts = ('parts' in object) ? object.parts : [];
+					self.scope.effects = null;
+					for (var partCount in object.effects) {
+						var effects = {};
+						for (var i = 0; i < objectProperties.length; i++) {
+							var property = objectProperties[i];
+							if (property.key in object.effects[partCount]) {
+								effects[property.shortName] = object.effects[partCount][property.key];
+							}
+						}
+						if (self.scope.effects == null) {
+							self.scope.effects = {};
+						}
+						self.scope.effects[partCount] = effects;
+					}
+					self.scope.classRestriction = [];
 					characters.forEach(function(character) {
-						if ((Number(item.stats[classRestrictionStat]) & Number(character.id)) == Number(character.id)) {
-							classRestriction.push(character.name);
+						if ((object.classRestriction & character.id) == character.id) {
+							self.scope.classRestriction.push(character.name);
 						}
 					});
-					if (classRestriction.length == characters.length) {
-						self.scope.item.classRestriction = [];
-					}
-					else {
-						self.scope.item.classRestriction = classRestriction;
+					if (self.scope.classRestriction.length == characters.length) {
+						self.scope.classRestriction = [];
 					}
 					$timeout(function() {
 						self.scope.style = style();
@@ -240,12 +300,12 @@
 	};
 
 
-	function itemsFilterDirective() {
+	function objectsTableMenuDirective() {
 		return {
 			restriction: 'E',
-			templateUrl: '/templates/items-filter.html',
-			controller: 'ItemsFilterController',
-			controllerAs: 'itemsFilter'
+			templateUrl: '/templates/objects-table-menu.html',
+			controller: 'ObjectsTableMenuController',
+			controllerAs: 'menu'
 		};
 	};
 
@@ -265,13 +325,12 @@
 					var flags = Number(attrs.characters);
 					characters.forEach(function(character) {
 						var flag = Number(character.id);
-						var flagSet = ((flags & flag) == flag);
-						var data = { initial: initials[character.id], name: character.name };
-						if (flagSet) {
-							enabled.push(data);
+						var character = { initial: initials[character.id], name: character.name };
+						if ((flags & flag) == flag) {
+							enabled.push(character);
 						}
 						else {
-							disabled.push(data);
+							disabled.push(character);
 						}
 					});
 					if (disabled.length > 0) {
@@ -290,22 +349,8 @@
 		};
 	};
 
-	function itemIconDirective() {
-		return {
-			restriction: 'E',
-			templateUrl: '/templates/item-icon.html',
-			scope: { iconId: '@' },
-			link: function(scope, element, attrs) {
-				scope.iconId = attrs.iconId;
-				element.find('img').bind('error', function () {
-					angular.element(this).attr('src', '/data/icons/0.png');
-				});
-			}
-		};
-	};
-
-	itemHovercardDirective.$inject = ['$document', '$timeout', 'ItemHovercard'];
-	function itemHovercardDirective($document, $timeout, ItemHovercard) {
+	objectHovercardDirective.$inject = ['$document', '$timeout', 'ObjectHovercard'];
+	function objectHovercardDirective($document, $timeout, ObjectHovercard) {
 		return {
 			restriction: 'A',
 			link: function(scope, element, attrs) {
@@ -334,7 +379,7 @@
 						return { x: x, y: y };
 					};
 					var getHovercardSize = function() {
-						var element = document.getElementById('item-hovercard');
+						var element = document.getElementById('object-hovercard');
 						var x = element.offsetWidth;
 						var y = element.offsetHeight;
 						return { x: x, y: y };
@@ -360,7 +405,7 @@
 				element.bind('mouseenter', function(event) {
 					delayedShow = $timeout(function() {
 						scope.$apply(function() {
-							ItemHovercard.show(attrs.itemHovercard, calculatePosition);
+							ObjectHovercard.show(attrs.objectHovercard, calculatePosition);
 						});
 					}, 250);
 				});
@@ -369,7 +414,7 @@
 						$timeout.cancel(delayedShow);
 					}
 					scope.$apply(function() {
-						ItemHovercard.hide();
+						ObjectHovercard.hide();
 					});
 				});
 			}
@@ -380,90 +425,143 @@
 	function ItemsController() {
 	};
 
-	ItemsFilterController.$inject = ['$resource'];
-	function ItemsFilterController($resource) {
+	ObjectsTableMenuController.$inject = ['Classification'];
+	function ObjectsTableMenuController(Classification) {
 		var self = this;
-		var url = '/data/item-groups.json';
-		self.groups = $resource(url, {}, { cache: true }).query();
+		self.classification = Classification.get();
 	};
 
-	ItemsListController.$inject = ['$scope', '$stateParams', '$filter', '$timeout', 'groups', 'stats', 'items', 'characters'];
-	function ItemsListController($scope, $stateParams, $filter, $timeout, groups, stats, items, characters) {
+	ObjectsTableController.$inject = ['$scope', '$stateParams', '$location', '$q', 'ObjectProperties', 'Characters', 'classification', 'objectList'];
+	function ObjectsTableController($scope, $stateParams, $location, $q, ObjectProperties, Characters, classification, objectList) {
 		var self = this;
-		self.groups = groups;
-		self.stats = stats;
-		self.characters = characters;
+		self.classification = classification;
+		self.objectProperties = ObjectProperties.get();
 		self.columns = [];
-		self.typeItems = items;
-		self.categoryItems = [];
-		self.items = [];
-		self.itemsShown = 0;
-		self.itemsToShow = 25;
-		self.selectedItem = null;
-		self.selectItem = selectItem;
-		self.order = order;
-		self.orderColumn = null;
-		self.orderReverse = false;
-		self.filters = {};
+		self.objectList = [];
+		self.objects = [];
+		self.lastObjectIndex = 0;
+		self.objectsToShow = 25;
 		self.filter = filter;
-		self.showFilter = showFilter;
-		self.hideFilters = hideFilters;
-		self.hideFiltersDelays = {};
+		self.selectedObjectKey = null;
+		self.selectObject = selectObject;
+		self.orderColumnKey = null;
+		self.orderReverse = false;
+		self.order = order;
+		self.showColumnMenu = showColumnMenu;
+		self.hideColumnMenu = hideColumnMenu;
 
-		var getById = function(objects, id) {
-			var result;
+		var findWithKey = function(objects, key) {
 			for (var i = 0; i < objects.length; i += 1) {
-				if (objects[i].id == id) {
-					result = objects[i];
-					break;
+				if (objects[i].key == key) {
+					return objects[i];
 				}
 			}
-			return result;
 		};
-		var group = getById(self.groups, $stateParams.groupId);
-		var type = getById(group.types, $stateParams.typeId);
-		var primaryStats = type.primaryStats;
-		primaryStats.forEach(function(stat) {
-			var stat = getById(self.stats, stat);
-			stat.filters = null;
-			self.columns.push(stat);
+		var group = findWithKey(self.classification.groups, $stateParams.groupKey);
+		var type = findWithKey(group.types, $stateParams.typeKey);
+		type.primaryProperties.forEach(function(property) {
+			var property = findWithKey(self.objectProperties, property);
+			delete property.options;
+			self.columns.push(property);
 		});
 
-		for (var i = 0; i < self.typeItems.length; i++) {
-			var item = self.typeItems[i];
-			if (item.groupId == $stateParams.groupId) {
-				if (item.typeId == $stateParams.typeId) {
-					if ($stateParams.categoryId == null || item.categoryId.indexOf(Number($stateParams.categoryId)) != -1) {
-						self.categoryItems.push(item);
-					}
-				}
+		for (var i = 0; i < objectList.length; i += 1) {
+			var object = objectList[i];
+			if ($stateParams.categoryKey == null || object.categoryKeys.indexOf($stateParams.categoryKey) != -1) {
+				self.objectList.push(object);
 			}
 		}
 
-		function order(column) {
-			if (self.orderColumn == column) {
-				self.orderReverse = self.orderReverse ? false : true;
+		var content = document.getElementById('content');
+		angular.element(content).bind('scroll', function() {
+			if (content.scrollTop + content.offsetHeight + 200 >= content.scrollHeight) {
+				$scope.$apply(function() {
+					if (self.lastObjectIndex < self.objectList.length) {
+						self.objectsToShow += 25;
+						self.filter(false);
+					}
+				});
 			}
-			else {
-				self.orderReverse = false;
+		});
+
+		var filterDefers = [];
+		var search = $location.search();
+		for (var ci = 0; ci < self.columns.length; ci += 1) {
+			var column = self.columns[ci];
+			if (column.key in search) {
+				filterDefers.push(buildColumnMenu(column));
 			}
-			self.orderColumn = String(column);
-			self.itemsShown = 0;
-			self.itemsToShow = 25;
-			self.categoryItems = self.categoryItems.sort(function(itemA, itemB) {
+		}
+		$q.all(filterDefers).then(function(columns) {
+			for (var i = 0; i < columns.length; i += 1) {
+				var column = columns[i];
+				var enabledOptions = search[column.key].split(',');
+				for (var oi = 0; oi < column.options.length; oi += 1) {
+					var option = column.options[oi];
+					if (enabledOptions.indexOf(option.key) != -1) {
+						option.enabled = true;
+					}
+				}
+			}
+			if ('order' in search) {
+				self.orderColumnKey = search.order.split('.')[0];
+				self.orderReverse = search.order.split('.')[1] == 'asc' ? true : false;
+				self.order();
+			}
+			self.filter(true);
+		});
+
+		function selectObject(key) {
+			self.selectedObjectKey = self.selectedObjectKey == key ? null : key;
+		};
+
+		function filter(restart) {
+			if (restart) {
+				self.objects = [];
+				self.lastObjectIndex = -1;
+				self.objectsToShow = 25;
+			}
+			for (self.lastObjectIndex += 1; self.lastObjectIndex < self.objectList.length && self.objects.length < self.objectsToShow; self.lastObjectIndex += 1) {
+				var object = self.objectList[self.lastObjectIndex];
+				var objectFiltered = true;
+				for (var ci = 0; ci < self.columns.length; ci += 1) {
+					var column = self.columns[ci];
+					column.optionEnabled = false;
+					var columnFiltered = false;
+					if ('options' in column) {
+						for (var oi = 0; oi < column.options.length; oi += 1) {
+							var option = column.options[oi];
+							if (option.enabled == true) {
+								column.optionEnabled = true;
+								columnFiltered |= option.test(object[column.key]);
+							}
+						}
+					}
+					objectFiltered &= !column.optionEnabled || columnFiltered;
+				}
+				if (objectFiltered) {
+					self.objects.push(object);
+				}
+			}
+		};
+
+		function order(columnKey) {
+			if (columnKey != undefined) {
+				if (self.orderColumnKey == columnKey) {
+					self.orderReverse = self.orderReverse ? false : true;
+				}
+				else {
+					self.orderReverse = false;
+				}
+				self.orderColumnKey = columnKey;
+				$location.search('order', self.orderColumnKey + (self.orderReverse ? '.asc' : '.desc'));
+			}
+			self.objectList = self.objectList.sort(function(objectA, objectB) {
 				var valueA = null;
 				var valueB = null;
-				if (Object.keys(itemA).indexOf(self.orderColumn) > -1) {
-					valueA = itemA[self.orderColumn];
-				}
-				else if (Object.keys(itemA.stats).indexOf(self.orderColumn) > -1) {
-					valueA = itemA.stats[self.orderColumn];
-				}
-				if (Object.keys(itemB).indexOf(self.orderColumn) > -1) {
-					valueB = itemB[self.orderColumn];
-				}
-				else if (Object.keys(itemB.stats).indexOf(self.orderColumn) > -1) {
-					valueB = itemB.stats[self.orderColumn];
+				if (self.orderColumnKey in objectA && self.orderColumnKey in objectB) {
+					valueA = objectA[self.orderColumnKey];
+					valueB = objectB[self.orderColumnKey];
 				}
 				if (valueA < valueB) {
 					return self.orderReverse ? -1 : 1;
@@ -471,156 +569,155 @@
 				else if (valueA > valueB) {
 					return self.orderReverse ? 1 : -1;
 				}
-				if (itemA.name < itemB.name) {
+				if (objectA.name < objectB.name) {
 					return -1;
 				}
-				else if (itemA.name > itemB.name) {
+				else if (objectA.name > objectB.name) {
 					return 1;
 				}
 				else {
 					return 0;
 				}
 			});
-			self.filter();
-		};
-
-		function filter() {
-			self.items = [];
-			for (var i = self.itemsShown; i < self.categoryItems.length && self.items.length < self.itemsToShow; i++) {
-				var item = self.categoryItems[i];
-				var itemFiltered = true;
-				for (var statId in self.filters) {
-					var itemStatFiltersActive = false;
-					var itemStatFiltered = false;
-					for (var testKey in self.filters[statId]) {
-						if (self.filters[statId][testKey]) {
-							itemStatFiltersActive = true;
-							itemStatFiltered |= self.filters[statId][testKey](item.stats[statId]);
-						}
-					}
-					itemFiltered &= (!itemStatFiltersActive || itemStatFiltered);
-				}
-				if (itemFiltered) {
-					self.items.push(item);
-				}
+			if (columnKey != undefined) {
+				self.filter(true);
 			}
 		};
 
-		function selectItem(index) {
-			self.selectedItem = self.selectedItem == index ? null : index;
-		};
-
-		function hideFilters() {
-			for (var i = 0; i < self.columns.length; i++) {
-				if (self.columns[i].filterOpen) {
-					self.columns[i].filterOpen = false;
+		function buildColumnMenu(column) {
+			var defer = $q.defer();
+			column.options = [];
+			var min = null;
+			var max = null;
+			var sum = 0;
+			var count = 0;
+			for (var i = 0; i < self.objectList.length; i += 1) {
+				var object = self.objectList[i];
+				if (column.key in object) {
+					var value = object[column.key];
+					if (max == null || max < value) {
+						max = value;
+					}
+					if (min == null || min > value) {
+						min = value;
+					}
+					count += 1;
+					sum += value;
 				}
 			}
-		};
+			var avg = Math.round(sum / count);
 
-		function showFilter(statId) {
-			var column = getById(self.columns, statId);
-			if (!column.filters) {
-				column.filters = [];
-				self.filters[statId] = {};
-				var min = null;
-				var max = null;
-				var sum = 0;
-				var count = 0;
-				for (var i = 0; i < self.categoryItems.length; i++) {
-					var item = self.categoryItems[i];
-					if (item.stats[statId] != undefined) {
-						var value = item.stats[statId];
-						if (max == null || max < value) {
-							max = value;
+			var saveOptions = function() {
+				var filter = '';
+				for (var ci = 0; ci < self.columns.length; ci += 1) {
+					var column = self.columns[ci];
+					if ('options' in column) {
+						var filter = '';
+						for (var oi = 0; oi < column.options.length; oi += 1) {
+							var option = column.options[oi];
+							if (option.enabled == true) {
+								filter += (filter.length == 0 ? '' : ',');
+								filter += option.key;
+							}
 						}
-						if (min == null || min > value) {
-							min = value;
+						if (filter.length > 0) {
+							$location.search(column.key, filter);
 						}
-						count += 1;
-						sum += value;
-					}
-				}
-				var avg = Math.round(sum / count);
-
-				var createFilter = function(name, from, till) {
-					return {
-						name: name,
-						enabled: false,
-						toggle: function() {
-							var test = function(value) { return value >= from && value < till; };
-							this.enabled = !this.enabled;
-							self.filters[statId][this.name] = this.enabled ? test : null;
-							self.itemsShown = 0;
-							self.itemsToShow = 25;
-							self.filter();
+						else {
+							$location.search(column.key, null);
 						}
 					}
-				};
-
-				var createCharacterFilter = function(name, id) {
-					return {
-						name: name,
-						enabled: false,
-						toggle: function() {
-							var test = function(value) { return (value & id) == id; };
-							this.enabled = !this.enabled;
-							self.filters[statId][this.name] = this.enabled ? test : null;
-							self.itemsShown = 0;
-							self.itemsToShow = 25;
-							self.filter();
-						}
-					}
-				};
-
-				if (column.type == 'RequiredLevel') {
-					for (var level = max; level >= 60; level -= 10) {
-						var from = level - level % 10;
-						var till = from + 10;
-						column.filters.push(createFilter(String(level)[0] + 'X', from, till));
-					}
-					column.filters.push(createFilter('Low-level', 0, 60));
 				}
+			};
 
-				else if (column.type == 'ClassRestriction') {
-					for (var i = 0; i < self.characters.length; i++) {
-						var character = self.characters[i];
-						column.filters.push(createCharacterFilter(character.name, character.id));
+			var createOption = function(key, name, from, till) {
+				return {
+					key: key,
+					name: name,
+					enabled: false,
+					test: function(value) { return value >= from && value < till; },
+					toggle: function() {
+						this.enabled = !this.enabled;
+						saveOptions();
+						self.filter(true);
 					}
 				}
+			};
 
-				else {
-					var high = Math.round(max - ((max - avg) / 2));
-					var low = Math.round(min + ((avg - min) / 2));
-					if (max > 0) {
-						var name = 'High (' + max + ' - ' + high + ')';
-						column.filters.push(createFilter(name, high, max + 1));
-					}
-					if (high > 0) {
-						var name = 'Average (' + (high - 1) + ' - ' + low + ')';
-						column.filters.push(createFilter(name, low, high));
-					}
-					if (low > 0) {
-						var name = 'Low (' + (low - 1) + ' - ' + min + ')';
-						column.filters.push(createFilter(name, min, low));
+			var createCharacterOption = function(key, name, id) {
+				return {
+					key: key,
+					name: name,
+					enabled: false,
+					test: function(value) { return (value & id) == id; },
+					toggle: function() {
+						this.enabled = !this.enabled;
+						saveOptions();
+						self.filter(true);
 					}
 				}
+			};
+
+			if (column.key == 'requiredLevel') {
+				for (var level = max; level >= 60; level -= 10) {
+					var from = level - level % 10;
+					var till = from + 10;
+					var name = String(level)[0] + 'X';
+					var key = name.toLowerCase();
+					column.options.push(createOption(key, name, from, till));
+				}
+				column.options.push(createOption('low', 'Low-level', 0, 60));
+				defer.resolve(column);
 			}
-			column.filterOpen = true;
-		};
 
-		var content = document.getElementById('content');
-		angular.element(content).bind('scroll', function() {
-			if (content.scrollTop + content.offsetHeight + 200 >= content.scrollHeight) {
-				$scope.$apply(function() {
-					if (self.itemsToShow < self.categoryItems.length) {
-						self.itemsToShow += 25;
-						self.filter();
+			else if (column.key == 'classRestriction') {
+				Characters.get().$promise.then(function(characters) {
+					for (var i = 0; i < characters.length; i += 1) {
+						var character = characters[i];
+						column.options.push(createCharacterOption(character.name.toLowerCase(), character.name, character.id));
 					}
+					defer.resolve(column);
 				});
 			}
-		});
-		self.filter();
+
+			else {
+				var high = Math.round(max - ((max - avg) / 2));
+				var low = Math.round(min + ((avg - min) / 2));
+				if (max > 0) {
+					var name = 'High (' + max + ' - ' + high + ')';
+					column.options.push(createOption('high', name, high, max + 1));
+				}
+				if (high > 0) {
+					var name = 'Average (' + (high - 1) + ' - ' + low + ')';
+					column.options.push(createOption('average', name, low, high));
+				}
+				if (low > 0) {
+					var name = 'Low (' + (low - 1) + ' - ' + min + ')';
+					column.options.push(createOption('low', name, min, low));
+				}
+				defer.resolve(column);
+			}
+			return defer.promise;
+		};
+
+		function hideColumnMenu() {
+			for (var i = 0; i < self.columns.length; i += 1) {
+				if (self.columns[i].menuOpen) {
+					self.columns[i].menuOpen = false;
+				}
+			}
+		};
+
+		function showColumnMenu(column) {
+			if ('options' in column) {
+				column.menuOpen = true;
+			}
+			else {
+				buildColumnMenu(column).then(function() {
+					column.menuOpen = true;
+				});
+			}
+		};
 	};
 
 })();

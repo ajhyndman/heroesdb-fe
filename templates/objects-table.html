@@ -1,0 +1,45 @@
+<div id="table-container">
+	<table id="table">
+		<thead>
+			<tr>
+				<th colspan="2">
+					<div class="name" ng-click="table.order('name')" flex>Item</div>
+				</th>
+				<th ng-class="{ 'option-enabled': column.optionEnabled }" ng-repeat="column in table.columns">
+					<div layout="horizontal">
+						<div class="name" ng-click="table.order(column.key)" flex>{{column.shortName}}</div>
+						<div class="menu" ng-mouseleave="table.hideColumnMenu()">
+							<i class="open fa fa-caret-down" ng-click="table.showColumnMenu(column)"></i>
+							<ol class="options z2" ng-show="column.menuOpen">
+								<li ng-repeat="option in column.options" ng-click="option.toggle()">
+									<i class="fa" ng-class="{ 'fa-check-square-o': option.enabled, 'fa-square-o': !option.enabled }"></i>
+									<span>{{option.name}}</span>
+								</li>
+							</ol>
+						</div>
+					</div>
+				</th>
+			</tr>
+		</thead>
+		<tbody class="empty" ng-if="table.objects.length == 0">
+			<tr><td colspan="{{2 + table.columns.length}}">No items found.</td></tr>
+		</tbody>
+		<tbody ng-if="table.objects.length > 0"><!--TODO animate-repeat?-->
+			<tr class="animate-repeat" ng-repeat="object in table.objects" ng-click="table.selectObject(object.key)" ng-class="{ 'selected': object.key == table.selectedObjectKey }">
+				<td>
+					<div class="icon" object-hovercard="{{object.type}}.{{object.key}}">
+						<img width="40" height="40" ng-src="/data/icons/{{object.iconID ? object.iconID : 0}}.png" />
+					</div>
+				</td>
+				<td>
+					<span class="name rarity{{object.rarity}}">{{object.name}}</span>
+					<div class="description" ng-if="table.columns.length == 0">{{object.description}}</div>
+				</td>
+				<td ng-repeat="column in table.columns">
+					<span ng-if="column.key != 'classRestriction'">{{object[column.key]}}</span>
+					<span ng-if="column.key == 'classRestriction'"><character-restriction characters="{{object[column.key]}}" /></span>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+</div>
