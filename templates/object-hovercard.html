@@ -1,45 +1,7 @@
-<div id="object-hovercard" class="object-hovercard z2" ng-style="style" ng-show="visible">
-	<div layout="vertical">
-		<div class="title" layout="horizontal" layout-align="start center">
-			<div class="icon"><img width="40" height="40" ng-src="/data/icons/{{iconID != null ? iconID : 0}}.png" /></div>
-			<div flex>
-				<span class="name rarity{{rarity}}">{{name}}</span>
-				<div class="set" ng-if="set != null"><span>{{set.name}}</span></div>
-				<div class="parts" ng-if="parts.length > 0"><span ng-repeat="part in parts">{{part.name}}{{!$last ? ', ' : ''}}</span></div>
-			</div>
-		</div>
-		<div class="main">
-			<ul class="stats" ng-if="stats.length > 0">
-				<li ng-repeat="stat in stats">
-					<span class="stat">
-						<span class="key">{{stat.name}}</span>
-						<span class="value">{{stat.value}}{{!$last ? ',' : '' }}</span>
-					</span>
-				</li>
-			</ul>
-			<div class="effects" ng-if="effects != null">
-				<div ng-repeat="(partCount, effect) in effects">
-					<span>{{partCount}} parts</span>
-					<i class="fa fa-angle-double-right"></i>
-					<span class="effect" ng-repeat="(name, value) in effect">
-						<span class="key">{{name}}</span>
-						<span class="value">{{value}}{{!$last ? ',' : '' }}</span>
-					</span>
-				</div>
-			</div>
-			<div class="description" ng-if="description">{{description}}</div>
-		</div>
-		<div class="requirements">
-			<span ng-if="classRestriction.length">
-				<span>Only for</span>
-				<span ng-repeat="character in classRestriction">{{character}}{{!$last ? ', ' : '' }}</span>.
-			</span>
-			<span>For levels {{requiredLevel}} and above.</span>
-			<span ng-if="requiredSkills.length > 0">
-				<span>Requires</span>
-				<span ng-repeat="skill in requiredSkills">{{skill.name}} rank {{skill.rank}}{{!$last ? ' and ' : ''}}</span>
-				<span>or above.</span>
-			</span>
-		</div>
+<div id="object-hovercard" class="object-hovercard object-material z2" ng-style="style" ng-show="visible">
+	<div ng-include="'/templates/object-material-title.html'"></div>
+	<div class="main">
+		<div ng-include="'/templates/object-material-main.html'"></div>
 	</div>
+	<div ng-include="'/templates/object-material-requirements.html'"></div>
 </div>

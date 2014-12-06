@@ -32,7 +32,8 @@
 					</div>
 				</td>
 				<td>
-					<span class="name rarity{{object.rarity}}">{{object.name}}</span>
+					<span class="name rarity{{object.rarity}}" object-card="{{object.type}}.{{object.key}}" ng-if="object.type == 'equip'">{{object.name}}</span>
+					<span class="name rarity{{object.rarity}}" ng-if="object.type != 'equip'">{{object.name}}</span>
 					<div class="description" ng-if="table.columns.length == 0">{{object.description}}</div>
 				</td>
 				<td ng-repeat="column in table.columns">

@@ -1,0 +1,12 @@
+<div class="requirements">
+	<span ng-if="object.classRestriction.length">
+		<span>Only for</span>
+		<span ng-repeat="character in object.classRestriction">{{character}}{{!$last ? ', ' : '' }}</span>.
+	</span>
+	<span>For levels {{object.requiredLevel}} and above.</span>
+	<span ng-if="object.requiredSkills.length > 0">
+		<span>Requires</span>
+		<span ng-repeat="skill in object.requiredSkills">{{skill.name}} rank {{skill.rank}}{{!$last ? ' and ' : ''}}</span>
+		<span>or above.</span>
+	</span>
+</div>

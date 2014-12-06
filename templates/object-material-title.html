@@ -1,0 +1,8 @@
+<div class="title" layout="horizontal" layout-align="start center">
+	<div class="icon"><img width="40" height="40" ng-src="/data/icons/{{object.iconID != null ? object.iconID : 0}}.png" /></div>
+	<div flex>
+		<span class="name rarity{{object.rarity}}">{{object.name}}</span>
+		<div class="set" ng-if="object.set != null"><span>{{object.set.name}}</span></div>
+		<div class="parts" ng-if="object.parts.length > 0"><span ng-repeat="part in object.parts">{{part.name}}{{!$last ? ', ' : ''}}</span></div>
+	</div>
+</div>

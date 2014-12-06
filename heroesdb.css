@@ -111,7 +111,7 @@ div#content {
 
 div#main-view {
 	margin: 1em 0;
-	background: #fff url('/card-background.png') no-repeat bottom right;
+	background: #fff url('/assets/card-background.png') no-repeat bottom right;
 }
 
 div#footer {
@@ -248,6 +248,10 @@ div#items table#table td div.icon {
 	cursor: help;
 }
 
+div#items table#table td span.name[object-card] {
+	cursor: pointer;
+}
+
 
 
 div#items table#table th div.menu i.open {
@@ -292,12 +296,108 @@ div#items table#table th div.menu ol.options li i {
 
 
 
+div.object-material div.title span.name {
+	white-space: nowrap;
+}
+
+div.object-material div.title div.icon {
+	padding-right: 1em;
+}
+
+div.object-material div.title div.set,
+div.object-material div.title div.parts,
+div.object-material div.requirements {
+	font-size: 0.9em;
+}
+
+div.object-material > div > * {
+	padding: 0.5em 1em;
+}
+
+div.object-material div.main {
+	border-top: 1px solid #ddd;
+	border-bottom: 1px solid #ddd;
+	background-color: #fff;
+}
+
+div.object-material div.main > div > * {
+	padding-bottom: 1em;
+}
+
+div.object-material div.main > div > *:last-child {
+	padding-bottom: 0;
+}
+
+div.object-material ul.stats span.stat,
+div.object-material div.effects span.effect {
+	white-space: nowrap;
+}
+
+div.object-material ul.stats span.key,
+div.object-material div.effects span.key {
+	font-weight: 500;
+}
+
+div.object-material ul.stats li {
+	display: inline;
+	padding-right: 0.3em;
+}
+
+div.object-material div.effects i {
+	margin: 0 0.3em;
+}
+
+div.object-material div.effects span.value {
+	padding-right: 0.3em;
+}
+
+div.object-material div.recipe.npc {
+	border-right: 1px solid #ddd;
+}
+
+div.object-material div.recipe div.crafted-by {
+	height: 55px;
+	border-bottom: 1px solid #ddd;
+}
+
+div.object-material div.recipe div.crafted-by img {
+	cursor: help;
+	padding-right: 0.5em;
+}
+
+div.object-material div.recipe div.crafted-by span.expertise {
+	font-weight: 500;
+}
+
+div.object-material div.recipe.npc ul.mats {
+	margin: 1em 2em 1em 0;
+	font-size: 0.9em;
+}
+
+div.object-material div.recipe.pc ul.mats {
+	margin: 1em 0 1em 2em;
+}
+
+div.object-material div.recipe ul.mats li {
+	margin-top: 0.3em
+}
+
+div.object-material div.recipe ul.mats div.icon {
+	padding-right: 1em;
+}
+
+div.object-material div.recipe div.appear span.quest {
+	font-weight: 500;
+}
+
+
+
 div#object-hovercard {
 	position: fixed;
 	width: 27em;
 	padding: 0.5em 0;
 	font-size: 0.9em;
-	background-color: #eee;
+	background-color: #f5f5f5;
 }
 
 div#object-hovercard.ng-hide {
@@ -310,99 +410,76 @@ div#object-hovercard.ng-hide-remove {
 	-webkit-animation: slideout 0.1s ease;
 }
 
-div#object-hovercard > div > * {
-	padding: 0.5em 1em;
+
+
+div#object-card-container {
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	background-color: rgba(229, 229, 229, 0.75);
 }
 
-div#object-hovercard div.title span.name {
-	white-space: nowrap;
-}
-
-div#object-hovercard div.title div.icon {
-	padding-right: 1em;
-}
-
-div#object-hovercard div.main {
-	border-top: 1px solid #ddd;
-	border-bottom: 1px solid #ddd;
+div#object-card {
+	margin: 10% auto;
+	padding: 0.5em 0;
+	font-size: 0.9em;
 	background-color: #f5f5f5;
 }
 
-
-div#object-hovercard div.main > * {
-	padding-bottom: 1em;
+div#object-card-container.ng-hide-remove {
+	animation: appear 0.2s ease-out;
+	-webkit-animation: appear 0.2s ease-out;
 }
 
-div#object-hovercard div.main > *:last-child {
-	padding-bottom: 0;
-}
-
-div#object-hovercard div.title div.set,
-div#object-hovercard div.title div.parts,
-div#object-hovercard div.requirements {
-	font-size: 0.9em;
-}
-
-div#object-hovercard ul.stats span.stat,
-div#object-hovercard div.effects span.effect {
-	white-space: nowrap;
-}
-
-div#object-hovercard ul.stats span.key,
-div#object-hovercard div.effects span.key {
-	font-weight: 500;
-}
-
-div#object-hovercard ul.stats li {
-	display: inline;
-	padding-right: 0.3em;
-}
-
-div#object-hovercard div.effects i {
-	margin: 0 0.3em;
-}
-
-div#object-hovercard div.effects span.value {
-	padding-right: 0.3em;
+div#object-card-container.ng-hide-remove div#object-card {
+	animation: slideout 0.2s ease;
+	-webkit-animation: slideout 0.2s ease;
 }
 
 
 
 div#items table#table td div.icon,
-div#object-hovercard div.icon {
+div.object-material div.icon {
 	width: 40px;
 	height: 40px;
 }
 
+div.object-material div.recipe div.icon {
+	width: 30px;
+	height: 30px;
+}
+
 div#items table#table td div.icon img,
-div#object-hovercard div.icon img {
+div.object-material div.icon img {
 	border: 1px solid #555;
 	border-radius: 20px;
 	background: url('/data/icons/0.png') no-repeat center center;
 }
 
 div#items table#table td span.name,
-div#object-hovercard span.name {
+div.object-material span.name {
 	font-weight: 500;
 }
 
 div#items table#table td span.name.rarity1,
-div#object-hovercard span.name.rarity1 {
+div.object-material span.name.rarity1 {
 	color: #757575;
 }
 
 div#items table#table td span.name.rarity2,
-div#object-hovercard span.name.rarity2 {
+div.object-material span.name.rarity2 {
 	color: #43a047;
 }
 
 div#items table#table td span.name.rarity3,
-div#object-hovercard span.name.rarity3 {
+div.object-material span.name.rarity3 {
 	color: #1e88e5;
 }
 
 div#items table#table td span.name.rarity4,
-div#object-hovercard span.name.rarity4 {
+div.object-material span.name.rarity4 {
 	color: #8e24aa;
 }
 

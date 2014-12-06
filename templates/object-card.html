@@ -1,0 +1,10 @@
+<div id="object-card-container" ng-show="visible" ng-click="hide()">
+	<div id="object-card" class="object-card object-material z2" flex-lg="60" flex-md="70" flex-sm="90" ng-click="$event.stopPropagation()">
+		<div ng-include="'/templates/object-material-title.html'"></div>
+		<div class="main">
+			<div ng-include="'/templates/object-material-main.html'"></div>
+			<div ng-include="'/templates/object-material-recipes.html'" ng-if="object.recipes != null"></div>
+		</div>
+		<div ng-include="'/templates/object-material-requirements.html'"></div>
+	</div>
+</div>

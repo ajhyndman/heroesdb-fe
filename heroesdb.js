@@ -13,8 +13,9 @@
 	//}]);
 
 
-	config.$inject = ['$stateProvider', '$locationProvider', '$urlRouterProvider', '$httpProvider'];
-	function config($stateProvider, $locationProvider, $urlRouterProvider, $httpProvider) {
+	config.$inject = ['$compileProvider', '$stateProvider', '$locationProvider', '$urlRouterProvider', '$httpProvider'];
+	function config($compileProvider, $stateProvider, $locationProvider, $urlRouterProvider, $httpProvider) {
+		$compileProvider.debugInfoEnabled(false);
 		$locationProvider.html5Mode({
 			enabled: true,
 			requireBase: false
@@ -56,10 +57,12 @@
 	app.factory('Object', ObjectService);
 	app.factory('ObjectProperties', ObjectPropertiesService);
 	app.factory('ObjectHovercard', ObjectHovercardService);
+	app.factory('ObjectCard', ObjectCardService);
 
 	app.directive('objectsTableMenu', objectsTableMenuDirective);
 	app.directive('characterRestriction', characterRestrictionDirective);
 	app.directive('objectHovercard', objectHovercardDirective);
+	app.directive('objectCard', objectCardDirective);
 
 	app.controller('ItemsController', ItemsController);
 	app.controller('ObjectsTableMenuController', ObjectsTableMenuController);
@@ -167,19 +170,74 @@
 		return { get: self.get };
 	};
 
-	ObjectService.$inject = ['$resource'];
-	function ObjectService($resource, $http) {
+	ObjectService.$inject = ['$q', '$resource', 'ObjectProperties', 'Characters'];
+	function ObjectService($q, $resource, ObjectProperties, Characters) {
 		var self = this;
 		self.objects = {};
 		self.get = function(type, key) {
+			var defer = $q.defer();
 			type = type + 's';
 			if (!(type in self.objects)) {
 				self.objects[type] = {}
 			}
-			if (!(key in self.objects[type])) {
-				self.objects[type][key] = $resource('/data/objects/:type/:key.json', { type: '@type', key: '@key' }).get({ type: type, key: key });
+			if (key in self.objects[type]) {
+				defer.resolve(self.objects[type][key]);
 			}
-			return self.objects[type][key];
+			else {
+				var query = $q.all([
+					$resource('/data/objects/:type/:key.json', { type: '@type', key: '@key' }).get({ type: type, key: key }).$promise,
+					ObjectProperties.get(),
+					Characters.get().$promise
+				]);
+				query.then(function(data) {
+					var rawObject = data[0];
+					var objectProperties = data[1];
+					var characters = data[2];
+					var object = {};
+					object.iconID = rawObject.iconID;
+					object.rarity = rawObject.rarity;
+					object.name = rawObject.name;
+					object.description = rawObject.description;
+					object.set = ('set' in rawObject) ? rawObject.set : null;
+					object.requiredLevel = rawObject.requiredLevel;
+					object.requiredSkills = rawObject.requiredSkills;
+					object.recipes = ('recipes' in rawObject) ? rawObject.recipes : null;
+					object.stats = [];
+					for (var i = 0; i < objectProperties.length; i++) {
+						var property = objectProperties[i];
+						if (property.base == true && rawObject[property.key] > 0) {
+							object.stats.push({ name: property.shortName, value: rawObject[property.key] });
+						}
+					}
+					object.parts = ('parts' in rawObject) ? rawObject.parts : [];
+					object.effects = null;
+					for (var partCount in rawObject.effects) {
+						var effects = {};
+						for (var i = 0; i < objectProperties.length; i++) {
+							var property = objectProperties[i];
+							if (property.key in rawObject.effects[partCount]) {
+								effects[property.shortName] = rawObject.effects[partCount][property.key];
+							}
+						}
+						if (object.effects == null) {
+							object.effects = {};
+						}
+						object.effects[partCount] = effects;
+					}
+					object.classRestriction = [];
+					characters.forEach(function(character) {
+						if ((rawObject.classRestriction & character.id) == character.id) {
+							object.classRestriction.push(character.name);
+						}
+					});
+					if (object.classRestriction.length == characters.length) {
+						object.classRestriction = [];
+					}
+					self.objects[type][key] = object;
+					defer.resolve(self.objects[type][key]);
+				});
+			}
+			return defer.promise;
 		};
 		return { get: self.get };
 	};
@@ -211,8 +269,8 @@
 		return { get: self.get };
 	};
 
-	ObjectHovercardService.$inject = ['$document', '$rootScope', '$compile', '$q', '$filter', '$timeout', 'Object', 'ObjectProperties', 'Characters'];
-	function ObjectHovercardService($document, $rootScope, $compile, $q, $filter, $timeout, Object, ObjectProperties, Characters) {
+	ObjectHovercardService.$inject = ['$document', '$rootScope', '$compile', '$timeout', 'Object'];
+	function ObjectHovercardService($document, $rootScope, $compile, $timeout, Object) {
 		var self = this;
 		self.objectTypeKey = null;
 		self.visible = false;
@@ -220,61 +278,16 @@
 		self.scope.visible = false;
 
 		var body = $document.find('body');
-		body.append('<div class="object-hovercard-container" ng-include="\'/templates/object-hovercard.html\'"></div>');
+		body.append('<div ng-include="\'/templates/object-hovercard.html\'"></div>');
 		var element = body[0].lastChild;
 		$compile(element)(self.scope);
 
 		var show = function(objectTypeKey, style) {
 			self.objectTypeKey = objectTypeKey;
 			self.visible = true;
-			var query = $q.all([
-				Object.get(objectTypeKey.split('.')[0], objectTypeKey.split('.')[1]).$promise,
-				ObjectProperties.get(),
-				Characters.get().$promise
-			]);
-			query.then(function(data) {
+			Object.get(objectTypeKey.split('.')[0], objectTypeKey.split('.')[1]).then(function(data) {
 				if (self.objectTypeKey == objectTypeKey && self.visible) {
-					var object = data[0];
-					var objectProperties = data[1];
-					var characters = data[2];
-					self.scope.iconID = object.iconID;
-					self.scope.rarity = object.rarity;
-					self.scope.name = object.name;
-					self.scope.description = object.description;
-					self.scope.set = ('set' in object) ? object.set : null;
-					self.scope.requiredLevel = object.requiredLevel;
-					self.scope.requiredSkills = object.requiredSkills;
-					self.scope.stats = [];
-					for (var i = 0; i < objectProperties.length; i++) {
-						var property = objectProperties[i];
-						if (property.base == true && object[property.key] > 0) {
-							self.scope.stats.push({ name: property.shortName, value: object[property.key] });
-						}
-					}
-					self.scope.parts = ('parts' in object) ? object.parts : [];
-					self.scope.effects = null;
-					for (var partCount in object.effects) {
-						var effects = {};
-						for (var i = 0; i < objectProperties.length; i++) {
-							var property = objectProperties[i];
-							if (property.key in object.effects[partCount]) {
-								effects[property.shortName] = object.effects[partCount][property.key];
-							}
-						}
-						if (self.scope.effects == null) {
-							self.scope.effects = {};
-						}
-						self.scope.effects[partCount] = effects;
-					}
-					self.scope.classRestriction = [];
-					characters.forEach(function(character) {
-						if ((object.classRestriction & character.id) == character.id) {
-							self.scope.classRestriction.push(character.name);
-						}
-					});
-					if (self.scope.classRestriction.length == characters.length) {
-						self.scope.classRestriction = [];
-					}
+					self.scope.object = data;
 					$timeout(function() {
 						self.scope.style = style();
 						self.scope.visible = self.visible;
@@ -295,6 +308,42 @@
 		return {
 			show: show,
 			update: update,
+			hide: hide
+		};
+	};
+
+	ObjectCardService.$inject = ['$document', '$rootScope', '$compile', '$q', '$filter', '$timeout', 'Object', 'ObjectProperties', 'Characters'];
+	function ObjectCardService($document, $rootScope, $compile, $q, $filter, $timeout, Object, ObjectProperties, Characters) {
+		var self = this;
+		self.objectTypeKey = null;
+		self.visible = false;
+		self.scope = $rootScope.$new(true);
+		self.scope.visible = false;
+
+		var body = $document.find('body');
+		body.append('<div ng-include="\'/templates/object-card.html\'"></div>');
+		var element = body[0].lastChild;
+		$compile(element)(self.scope);
+
+		var show = function(objectTypeKey) {
+			self.objectTypeKey = objectTypeKey;
+			self.visible = true;
+			Object.get(objectTypeKey.split('.')[0], objectTypeKey.split('.')[1]).then(function(data) {
+				if (self.objectTypeKey == objectTypeKey && self.visible) {
+					self.scope.object = data;
+					self.scope.hide = hide;
+					self.scope.visible = self.visible;
+				}
+			});
+		};
+
+		var hide = function() {
+			self.visible = false;
+			self.scope.visible = self.visible;
+		};
+
+		return {
+			show: show,
 			hide: hide
 		};
 	};
@@ -416,6 +465,18 @@
 					scope.$apply(function() {
 						ObjectHovercard.hide();
 					});
+				});
+			}
+		};
+	};
+
+	objectCardDirective.$inject = ['ObjectCard'];
+	function objectCardDirective(ObjectCard) {
+		return {
+			restriction: 'A',
+			link: function(scope, element, attrs) {
+				element.bind('click', function(event) {
+					ObjectCard.show(attrs.objectCard);
 				});
 			}
 		};
