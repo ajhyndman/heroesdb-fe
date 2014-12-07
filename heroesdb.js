@@ -333,6 +333,10 @@
 					self.scope.object = data;
 					self.scope.hide = hide;
 					self.scope.visible = self.visible;
+					$timeout(function() {
+						var container = document.getElementById('object-card-container');
+						container.scrollTop = 0;
+					}, 1);
 				}
 			});
 		};

@@ -338,6 +338,9 @@
 	[show-sm] { display: inherit; }
 
 	[layout-sm=horizontal] {
+		flex-direction: row;
+		-webkit-flex-direction: row;
+		-ms-flex-direction: row;
 		box-sizing: border-box;
 		display: flex;
 		display: -webkit-flex;
@@ -596,6 +599,9 @@
 	[show-md] { display: inherit; }
 
 	[layout-md=horizontal] {
+		flex-direction: row;
+		-webkit-flex-direction: row;
+		-ms-flex-direction: row;
 		box-sizing: border-box;
 		display: flex;
 		display: -webkit-flex;
@@ -854,6 +860,9 @@
 	[show-lg] { display: inherit; }
 
 	[layout-lg=horizontal] {
+		flex-direction: row;
+		-webkit-flex-direction: row;
+		-ms-flex-direction: row;
 		box-sizing: border-box;
 		display: flex;
 		display: -webkit-flex;

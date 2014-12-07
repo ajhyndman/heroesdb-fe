@@ -371,15 +371,15 @@ div.object-material div.recipe div.crafted-by span.expertise {
 
 div.object-material div.recipe.npc ul.mats {
 	margin: 1em 2em 1em 0;
-	font-size: 0.9em;
 }
 
 div.object-material div.recipe.pc ul.mats {
 	margin: 1em 0 1em 2em;
 }
 
-div.object-material div.recipe ul.mats li {
-	margin-top: 0.3em
+div.object-material div.recipe ul.mats li.mat {
+	margin-top: 0.3em;
+	font-size: 0.9em;
 }
 
 div.object-material div.recipe ul.mats div.icon {
@@ -388,6 +388,23 @@ div.object-material div.recipe ul.mats div.icon {
 
 div.object-material div.recipe div.appear span.quest {
 	font-weight: 500;
+}
+
+@media (max-width: 959px) {
+
+	div.object-material div.recipe.npc {
+		border-right: 0;
+		margin-bottom: 1em;
+	}
+
+	div.object-material div.recipe.npc ul.mats {
+		margin: 0;
+	}
+
+	div.object-material div.recipe.pc ul.mats {
+		margin: 0;
+	}
+
 }
 
 
@@ -414,6 +431,7 @@ div#object-hovercard.ng-hide-remove {
 
 div#object-card-container {
 	position: fixed;
+	overflow-y: scroll;
 	top: 0;
 	right: 0;
 	bottom: 0;

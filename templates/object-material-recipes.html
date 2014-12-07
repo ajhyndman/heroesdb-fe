@@ -1,5 +1,5 @@
-<div layout="horizontal">
-	<div class="recipe npc" flex="50">
+<div layout-md="horizontal" layout-sm="vertical">
+	<div class="recipe npc" layout="vertical" flex-md="50" flex-sm>
 		<div class="crafted-by" layout="horizontal" ng-if="object.recipes.npc">
 			<div><img width="55" height="55" title="{{shop.name}}" ng-src="/assets/{{shop.key}}.png" ng-repeat="shop in object.recipes.npc.shops" /></div>
 		</div>
@@ -19,7 +19,7 @@
 			<div>Recipe unlocked after <span class="quest">{{object.recipes.npc.appearQuestName}}</span>.</div>
 		</div>
 	</div>
-	<div class="recipe pc" flex="50">
+	<div class="recipe pc" layout="vertical" flex-md="50" flex-sm>
 		<div class="crafted-by" layout="horizontal" layout-align="center center">
 			<div ng-if="object.recipes.pc">
 				<span class="expertise">{{object.recipes.pc.expertiseName}}</span>
