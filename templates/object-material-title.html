@@ -3,6 +3,6 @@
 	<div flex>
 		<span class="name rarity{{object.rarity}}">{{object.name}}</span>
 		<div class="set" ng-if="object.set != null"><span>{{object.set.name}}</span></div>
-		<div class="parts" ng-if="object.parts.length > 0"><span ng-repeat="part in object.parts">{{part.name}}{{!$last ? ', ' : ''}}</span></div>
+		<div class="parts" ng-if="object.parts.length > 0"><span ng-repeat="part in object.parts">{{part.nameShort}}{{!$last ? ', ' : ''}}</span></div>
 	</div>
 </div>

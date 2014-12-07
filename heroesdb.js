@@ -38,12 +38,24 @@
 			controllerAs: 'table',
 			resolve: objectsTableResolve
 		});
+		$stateProvider.state('items.group-type.item', {
+			url: '/{objectKey}.{objectType}',
+			templateUrl: '/templates/object-card.html',
+			controller: 'ObjectCardController',
+			controllerAs: 'card',
+		});
 		$stateProvider.state('items.group-type-category', {
 			url: '/{groupKey}/{typeKey}/{categoryKey}',
 			templateUrl: '/templates/objects-table.html',
 			controller: 'ObjectsTableController',
 			controllerAs: 'table',
 			resolve: objectsTableResolve
+		});
+		$stateProvider.state('items.group-type-category.item', {
+			url: '/{objectKey}.{objectType}',
+			templateUrl: '/templates/object-card.html',
+			controller: 'ObjectCardController',
+			controllerAs: 'card',
 		});
 		$httpProvider.interceptors.push('LoadingStatus');
 	};
@@ -57,16 +69,15 @@
 	app.factory('Object', ObjectService);
 	app.factory('ObjectProperties', ObjectPropertiesService);
 	app.factory('ObjectHovercard', ObjectHovercardService);
-	app.factory('ObjectCard', ObjectCardService);
 
 	app.directive('objectsTableMenu', objectsTableMenuDirective);
 	app.directive('characterRestriction', characterRestrictionDirective);
 	app.directive('objectHovercard', objectHovercardDirective);
-	app.directive('objectCard', objectCardDirective);
 
 	app.controller('ItemsController', ItemsController);
 	app.controller('ObjectsTableMenuController', ObjectsTableMenuController);
 	app.controller('ObjectsTableController', ObjectsTableController);
+	app.controller('ObjectCardController', ObjectCardController);
 
 
 	LoadingStatusService.$inject = ['$rootScope', '$q'];
@@ -272,7 +283,7 @@
 	ObjectHovercardService.$inject = ['$document', '$rootScope', '$compile', '$timeout', 'Object'];
 	function ObjectHovercardService($document, $rootScope, $compile, $timeout, Object) {
 		var self = this;
-		self.objectTypeKey = null;
+		self.objectKeyType = null;
 		self.visible = false;
 		self.scope = $rootScope.$new(true);
 		self.scope.visible = false;
@@ -282,11 +293,11 @@
 		var element = body[0].lastChild;
 		$compile(element)(self.scope);
 
-		var show = function(objectTypeKey, style) {
-			self.objectTypeKey = objectTypeKey;
+		var show = function(objectKeyType, style) {
+			self.objectKeyType = objectKeyType;
 			self.visible = true;
-			Object.get(objectTypeKey.split('.')[0], objectTypeKey.split('.')[1]).then(function(data) {
-				if (self.objectTypeKey == objectTypeKey && self.visible) {
+			Object.get(objectKeyType.split('.')[1], objectKeyType.split('.')[0]).then(function(data) {
+				if (self.objectKeyType == objectKeyType && self.visible) {
 					self.scope.object = data;
 					$timeout(function() {
 						self.scope.style = style();
@@ -308,46 +319,6 @@
 		return {
 			show: show,
 			update: update,
-			hide: hide
-		};
-	};
-
-	ObjectCardService.$inject = ['$document', '$rootScope', '$compile', '$q', '$filter', '$timeout', 'Object', 'ObjectProperties', 'Characters'];
-	function ObjectCardService($document, $rootScope, $compile, $q, $filter, $timeout, Object, ObjectProperties, Characters) {
-		var self = this;
-		self.objectTypeKey = null;
-		self.visible = false;
-		self.scope = $rootScope.$new(true);
-		self.scope.visible = false;
-
-		var body = $document.find('body');
-		body.append('<div ng-include="\'/templates/object-card.html\'"></div>');
-		var element = body[0].lastChild;
-		$compile(element)(self.scope);
-
-		var show = function(objectTypeKey) {
-			self.objectTypeKey = objectTypeKey;
-			self.visible = true;
-			Object.get(objectTypeKey.split('.')[0], objectTypeKey.split('.')[1]).then(function(data) {
-				if (self.objectTypeKey == objectTypeKey && self.visible) {
-					self.scope.object = data;
-					self.scope.hide = hide;
-					self.scope.visible = self.visible;
-					$timeout(function() {
-						var container = document.getElementById('object-card-container');
-						container.scrollTop = 0;
-					}, 1);
-				}
-			});
-		};
-
-		var hide = function() {
-			self.visible = false;
-			self.scope.visible = self.visible;
-		};
-
-		return {
-			show: show,
 			hide: hide
 		};
 	};
@@ -416,11 +387,11 @@
 						return { x: x, y: y };
 					};
 					var getPointerPosition = function(event) {
+						if (!event) {
+							return { x: 50, y: 50 };
+						}
 						var x = 0;
 						var y = 0;
-						if (!event) {
-							var e = window.event;
-						}
 						if (event.pageX || event.pageY) {
 							x = event.pageX;
 							y = event.pageY;
@@ -474,17 +445,6 @@
 		};
 	};
 
-	objectCardDirective.$inject = ['ObjectCard'];
-	function objectCardDirective(ObjectCard) {
-		return {
-			restriction: 'A',
-			link: function(scope, element, attrs) {
-				element.bind('click', function(event) {
-					ObjectCard.show(attrs.objectCard);
-				});
-			}
-		};
-	};
 
 
 	function ItemsController() {
@@ -782,6 +742,23 @@
 					column.menuOpen = true;
 				});
 			}
+		};
+	};
+
+	ObjectCardController.$inject = ['$state', '$stateParams', '$scope', 'Object'];
+	function ObjectCardController($state, $stateParams, $scope, Object) {
+		var self = this;
+		self.hide = hide;
+		self.visible = false;
+
+		Object.get($stateParams.objectType, $stateParams.objectKey).then(function(data) {
+			$scope.object = data;
+			self.visible = true;
+		});
+
+		function hide() {
+			self.visible = false;
+			$state.go('^');
 		};
 	};
 

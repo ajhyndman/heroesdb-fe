@@ -81,6 +81,16 @@ a:focus {
 	to { opacity: 1; }
 }
 
+@keyframes disappear {
+	from { opacity: 1; }
+	to { opacity: 0; }
+}
+
+@-webkit-keyframes disappear {
+	from { opacity: 1; }
+	to { opacity: 0; }
+}
+
 @keyframes slideout {
 	from {
 		opacity: 0;
@@ -248,10 +258,6 @@ div#items table#table td div.icon {
 	cursor: help;
 }
 
-div#items table#table td span.name[object-card] {
-	cursor: pointer;
-}
-
 
 
 div#items table#table th div.menu i.open {
@@ -306,26 +312,14 @@ div.object-material div.title div.icon {
 
 div.object-material div.title div.set,
 div.object-material div.title div.parts,
-div.object-material div.requirements {
+div.object-material div.requirements > span {
 	font-size: 0.9em;
-}
-
-div.object-material > div > * {
-	padding: 0.5em 1em;
 }
 
 div.object-material div.main {
 	border-top: 1px solid #ddd;
 	border-bottom: 1px solid #ddd;
 	background-color: #fff;
-}
-
-div.object-material div.main > div > * {
-	padding-bottom: 1em;
-}
-
-div.object-material div.main > div > *:last-child {
-	padding-bottom: 0;
 }
 
 div.object-material ul.stats span.stat,
@@ -343,12 +337,24 @@ div.object-material ul.stats li {
 	padding-right: 0.3em;
 }
 
+div.object-material ul.stats + div.description {
+	margin-top: 1em;
+}
+
+div.object-material div.effects {
+	padding-left: 2em;
+}
+
 div.object-material div.effects i {
 	margin: 0 0.3em;
 }
 
 div.object-material div.effects span.value {
 	padding-right: 0.3em;
+}
+
+div.object-material ul.parts {
+	border-right: 1px solid #ddd;
 }
 
 div.object-material div.recipe.npc {
@@ -377,12 +383,14 @@ div.object-material div.recipe.pc ul.mats {
 	margin: 1em 0 1em 2em;
 }
 
-div.object-material div.recipe ul.mats li.mat {
+div.object-material div.recipe ul.mats li.mat,
+div.object-material ul.parts li.part {
 	margin-top: 0.3em;
 	font-size: 0.9em;
 }
 
-div.object-material div.recipe ul.mats div.icon {
+div.object-material div.recipe ul.mats div.icon,
+div.object-material ul.parts li.part div.icon {
 	padding-right: 1em;
 	cursor: help;
 }
@@ -429,6 +437,10 @@ div#object-hovercard.ng-hide-remove {
 	-webkit-animation: slideout 0.1s ease;
 }
 
+div#object-hovercard > div > * {
+	padding: 0.5em 1em;
+}
+
 
 
 div#object-card-container {
@@ -449,14 +461,27 @@ div#object-card {
 	background-color: #f5f5f5;
 }
 
-div#object-card-container.ng-hide-remove {
-	animation: appear 0.2s ease-out;
-	-webkit-animation: appear 0.2s ease-out;
+div#object-card-view.ng-enter {
+	animation: appear 0.3s ease-out;
+	-webkit-animation: appear 0.3s ease-out;
 }
 
-div#object-card-container.ng-hide-remove div#object-card {
-	animation: slideout 0.2s ease;
-	-webkit-animation: slideout 0.2s ease;
+div#object-card-view.ng-enter div#object-card {
+	animation: slideout 0.3s ease;
+	-webkit-animation: slideout 0.3s ease;
+}
+
+div#object-card-view.ng-leave {
+	animation: disappear 0.3s ease-out;
+	-webkit-animation: disappear 0.3s ease-out;
+}
+
+div#object-card-view.ng-leave {
+	-ms-animation: none;
+}
+
+div#object-card > div > * {
+	padding: 1em 1.5em;
 }
 
 
@@ -467,7 +492,8 @@ div.object-material div.icon {
 	height: 40px;
 }
 
-div.object-material div.recipe div.icon {
+div.object-material div.recipe div.icon,
+div.object-material ul.parts div.icon {
 	width: 30px;
 	height: 30px;
 }
@@ -482,6 +508,11 @@ div.object-material div.icon img {
 div#items table#table td span.name,
 div.object-material span.name {
 	font-weight: 500;
+}
+
+div#items table#table td span.name a,
+div.object-material span.name a {
+	color: inherit;
 }
 
 div#items table#table td span.name.rarity1,

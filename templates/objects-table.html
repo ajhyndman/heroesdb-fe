@@ -27,13 +27,14 @@
 		<tbody ng-if="table.objects.length > 0">
 			<tr ng-repeat="object in table.objects" ng-click="table.selectObject(object.key)" ng-class="{ 'selected': object.key == table.selectedObjectKey }">
 				<td>
-					<div class="icon" object-hovercard="{{object.type}}.{{object.key}}">
+					<div class="icon" object-hovercard="{{object.key}}.{{object.type}}">
 						<img width="40" height="40" ng-src="/data/icons/{{object.iconID ? object.iconID : 0}}.png" />
 					</div>
 				</td>
 				<td>
-					<span class="name rarity{{object.rarity}}" object-card="{{object.type}}.{{object.key}}" ng-if="object.type == 'equip'">{{object.name}}</span>
-					<span class="name rarity{{object.rarity}}" ng-if="object.type != 'equip'">{{object.name}}</span>
+					<span class="name rarity{{object.rarity}}">
+						<a ui-sref=".item({ objectKey: object.key, objectType: object.type })">{{object.name}}</a>
+					</span>
 					<div class="description" ng-if="table.columns.length == 0">{{object.description}}</div>
 				</td>
 				<td ng-repeat="column in table.columns">
@@ -44,3 +45,4 @@
 		</tbody>
 	</table>
 </div>
+<div id="object-card-view" ui-view></div>

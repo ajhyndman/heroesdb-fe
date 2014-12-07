@@ -1,0 +1,22 @@
+<div layout="horizontal">
+	<ul class="parts" flex="50">
+		<li class="part" ng-repeat="part in object.parts">
+			<div layout="horizontal" layout-align="start center">
+				<div class="icon" object-hovercard="{{part.key}}.equip"><img width="30" height="30" ng-src="/data/icons/{{part.iconID != null ? part.iconID : 0}}.png" /></div>
+				<span class="name rarity{{part.rarity}}" flex>
+					<a ui-sref="^.item({ objectKey: part.key, objectType: 'equip' })">{{part.name}}</a>
+				</span>
+			</div>
+		</li>
+	</ul>
+	<div class="effects" flex="50">
+		<div ng-repeat="(partCount, effect) in object.effects">
+			<span>{{partCount}} part bonus</span>
+			<i class="fa fa-angle-double-right"></i>
+			<span class="effect" ng-repeat="(name, value) in effect">
+				<span class="key">{{name}}</span>
+				<span class="value">{{value}}{{!$last ? ',' : '' }}</span>
+			</span>
+		</div>
+	</div>
+</div>

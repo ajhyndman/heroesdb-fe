@@ -1,0 +1,9 @@
+<ul class="stats" ng-if="object.stats.length > 0">
+	<li ng-repeat="stat in object.stats">
+		<span class="stat">
+			<span class="key">{{stat.name}}</span>
+			<span class="value">{{stat.value}}{{!$last ? ',' : '' }}</span>
+		</span>
+	</li>
+</ul>
+<div class="description" ng-if="object.description">{{object.description}}</div>
