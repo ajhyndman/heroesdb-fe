@@ -9,7 +9,7 @@
 		<ul class="mats">
 			<li class="mat" ng-repeat="mat in object.recipes.npc.mats">
 				<div layout="horizontal" layout-align="start center">
-					<div class="icon"><img width="30" height="30" ng-src="/data/icons/{{mat.iconID != null ? mat.iconID : 0}}.png" /></div>
+					<div class="icon" object-hovercard="mat.{{mat.key}}"><img width="30" height="30" ng-src="/data/icons/{{mat.iconID != null ? mat.iconID : 0}}.png" /></div>
 					<span class="name rarity{{mat.rarity}}" flex>{{mat.name}}</span>
 					<span>x{{mat.count | number}}</span>
 				</div>
@@ -32,7 +32,7 @@
 		<ul class="mats" ng-if="object.recipes.pc">
 			<li class="mat" ng-repeat="mat in object.recipes.pc.mats">
 				<div layout="horizontal" layout-align="start center">
-					<div class="icon"><img width="30" height="30" ng-src="/data/icons/{{mat.iconID != null ? mat.iconID : 0}}.png" /></div>
+					<div class="icon" object-hovercard="mat.{{mat.key}}"><img width="30" height="30" ng-src="/data/icons/{{mat.iconID != null ? mat.iconID : 0}}.png" /></div>
 					<span class="name rarity{{mat.rarity}}" flex>{{mat.name}}</span>
 					<span>x{{mat.count | number}}</span>
 				</div>

@@ -384,6 +384,7 @@ div.object-material div.recipe ul.mats li.mat {
 
 div.object-material div.recipe ul.mats div.icon {
 	padding-right: 1em;
+	cursor: help;
 }
 
 div.object-material div.recipe div.appear span.quest {
@@ -411,6 +412,7 @@ div.object-material div.recipe div.appear span.quest {
 
 div#object-hovercard {
 	position: fixed;
+	z-index: 1000;
 	width: 27em;
 	padding: 0.5em 0;
 	font-size: 0.9em;
@@ -431,6 +433,7 @@ div#object-hovercard.ng-hide-remove {
 
 div#object-card-container {
 	position: fixed;
+	z-index: 100;
 	overflow-y: scroll;
 	top: 0;
 	right: 0;
