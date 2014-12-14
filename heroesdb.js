@@ -4,6 +4,15 @@
 
 	var app = angular.module('heroesdb', ['ngResource', 'ngAnimate', 'ui.router']);
 
+	app.run(['$rootScope', '$location', '$window', function($rootScope, $location, $window) {
+		$rootScope.$on('$stateChangeSuccess', function(event) {
+			if (!$window.ga) {
+				return;
+			}
+			$window.ga('send', 'pageview', { page: $location.path() });
+		});
+	}]);
+
 	//app.run(['$rootScope', function($rootScope) {
 	//	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) { console.log('$stateChangeStart to ' + toState.name); });
 	//	$rootScope.$on('$stateChangeError', function(event, toState, toParams, fromState, fromParams) { console.log('$stateChangeError'); });
