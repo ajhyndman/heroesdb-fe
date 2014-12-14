@@ -213,28 +213,16 @@
 					object.requiredLevel = rawObject.requiredLevel;
 					object.requiredSkills = rawObject.requiredSkills;
 					object.recipes = ('recipes' in rawObject) ? rawObject.recipes : null;
-					object.stats = [];
+					object.properties = [];
 					for (var i = 0; i < objectProperties.length; i++) {
 						var property = objectProperties[i];
 						if (property.base == true && rawObject[property.key] > 0) {
-							object.stats.push({ name: property.shortName, value: rawObject[property.key] });
+							object[property.key] = rawObject[property.key];
+							object.properties.push(property);
 						}
 					}
-					object.parts = ('parts' in rawObject) ? rawObject.parts : [];
-					object.effects = null;
-					for (var partCount in rawObject.effects) {
-						var effects = {};
-						for (var i = 0; i < objectProperties.length; i++) {
-							var property = objectProperties[i];
-							if (property.key in rawObject.effects[partCount]) {
-								effects[property.shortName] = rawObject.effects[partCount][property.key];
-							}
-						}
-						if (object.effects == null) {
-							object.effects = {};
-						}
-						object.effects[partCount] = effects;
-					}
+					object.parts = ('parts' in rawObject) ? rawObject.parts : null;
+					object.effects = ('effects' in rawObject) ? rawObject.effects : null;
 					object.classRestriction = [];
 					characters.forEach(function(character) {
 						if ((rawObject.classRestriction & character.id) == character.id) {
@@ -492,7 +480,7 @@
 
 		for (var i = 0; i < objectList.length; i += 1) {
 			var object = objectList[i];
-			if ($stateParams.categoryKey == null || object.categoryKeys.indexOf($stateParams.categoryKey) != -1) {
+			if ($stateParams.categoryKey == null || object.categoryKeys.indexOf($stateParams.categoryKey) >= 0) {
 				self.objectList.push(object);
 			}
 		}
@@ -523,7 +511,7 @@
 				var enabledOptions = search[column.key].split(',');
 				for (var oi = 0; oi < column.options.length; oi += 1) {
 					var option = column.options[oi];
-					if (enabledOptions.indexOf(option.key) != -1) {
+					if (enabledOptions.indexOf(option.key) >= 0) {
 						option.enabled = true;
 					}
 				}
@@ -588,21 +576,11 @@
 					valueA = objectA[self.orderColumnKey];
 					valueB = objectB[self.orderColumnKey];
 				}
-				if (valueA < valueB) {
-					return self.orderReverse ? -1 : 1;
-				}
-				else if (valueA > valueB) {
-					return self.orderReverse ? 1 : -1;
-				}
-				if (objectA.name < objectB.name) {
-					return -1;
-				}
-				else if (objectA.name > objectB.name) {
-					return 1;
-				}
-				else {
-					return 0;
-				}
+				if (valueA < valueB) return self.orderReverse ? -1 : 1;
+				if (valueA > valueB) return self.orderReverse ? 1 : -1;
+				if (objectA.name < objectB.name) return -1;
+				if (objectA.name > objectB.name) return 1;
+				return 0;
 			});
 			if (columnKey != undefined) {
 				self.filter(true);
@@ -750,15 +728,241 @@
 		var self = this;
 		self.hide = hide;
 		self.visible = false;
+		self.setSetPartColumns = setSetPartColumns;
+		self.updateSetProperties = updateSetProperties;
+		self.updateSetRecipe = updateSetRecipe;
+		self.selectedSetParts = [];
+		self.toggleSetPart = toggleSetPart;
+		self.setPartIsSelected = setPartIsSelected;
+		self.activeSetEffectKey = activeSetEffectKey;
 
 		Object.get($stateParams.objectType, $stateParams.objectKey).then(function(data) {
 			$scope.object = data;
+			if ($stateParams.objectType == 'set') {
+				for (var pi = 0; pi < $scope.object.parts.length; pi += 1) {
+					var equip = $scope.object.parts[pi];
+					self.selectedSetParts.push(equip.key);
+				}
+				self.setSetPartColumns();
+				self.updateSetRecipe();
+			}
 			self.visible = true;
 		});
+
+		function setSetPartColumns() {
+			var columns = [];
+			var defaultColumns = [ 'def', 'str', 'int', 'dex', 'will', 'hp' ];
+			var effectColumns = [];
+			for (var effectKey in $scope.object.effects) {
+				var effect = $scope.object.effects[effectKey];
+				for (var propertyKey in effect) {
+					if (effectColumns.indexOf(propertyKey) == -1) {
+						effectColumns.push(propertyKey);
+					}
+				}
+			}
+			for (var i = 0; i < defaultColumns.length; i += 1) {
+				if (effectColumns.indexOf(defaultColumns[i]) >= 0) {
+					columns.push(defaultColumns[i]);
+				}
+			}
+			for (var i = 0; i < effectColumns.length; i += 1) {
+				if (columns.indexOf(effectColumns[i]) == -1) {
+					columns.push(effectColumns[i]);
+				}
+			}
+			for (var i = 0; i < defaultColumns.length && columns.length < 6; i += 1) {
+				if (columns.indexOf(defaultColumns[i]) == -1 && (defaultColumns[i] in $scope.object)) {
+					columns.push(defaultColumns[i]);
+				}
+			}
+			$scope.columns = [];
+			for (var ci = 0; ci < columns.length; ci += 1) {
+				var column = columns[ci];
+				for (var pi = 0; pi < $scope.object.properties.length; pi += 1) {
+					var property = $scope.object.properties[pi];
+					if (property.key == column) {
+						$scope.columns.push(property);
+						break;
+					}
+				}
+			}
+		};
+
+		function updateSetProperties() {
+			var properties = {};
+			for (var pi = 0; pi < $scope.object.parts.length; pi += 1) {
+				var equip = $scope.object.parts[pi];
+				for (var pri = 0; pri < $scope.object.properties.length; pri += 1) {
+					var property = $scope.object.properties[pri];
+					if (!(property.key in properties)) {
+						properties[property.key] = 0;
+					}
+					if (property.key in equip && self.selectedSetParts.indexOf(equip.key) >= 0) {
+						properties[property.key] += equip[property.key];
+					}
+				}
+			}
+			if (self.selectedSetParts.length in $scope.object.effects) {
+				var activeEffect = $scope.object.effects[self.selectedSetParts.length];
+				for (var propertyKey in activeEffect) {
+					var propertyValue = activeEffect[propertyKey];
+					if (!(propertyKey in properties)) {
+						properties[propertyKey] = 0;
+					}
+					properties[propertyKey] += propertyValue;
+				}
+			}
+			for (var propertyKey in properties) {
+				$scope.object[propertyKey] = properties[propertyKey];
+			}
+		};
+
+		function updateSetRecipe() {
+			var recipes = {
+				npc: {
+					appearQuestNames: [],
+					shops: []
+				},
+				pc: {
+					expertises: []
+				}
+			};
+			var npcRecipe = false;
+			var pcRecipe = false;
+			var getSetMats = function(recipeType, setParts) {
+				var mats = [];
+				for (var pi = 0; pi < setParts.length; pi += 1) {
+					var equip = setParts[pi];
+					if ('recipes' in equip && recipeType in equip.recipes && self.selectedSetParts.indexOf(equip.key) >= 0) {
+						for (var mi = 0; mi < equip.recipes[recipeType].mats.length; mi += 1) {
+							var mat = equip.recipes[recipeType].mats[mi];
+							var added = false;
+							for (var ami = 0; ami < mats.length; ami += 1) {
+								var addedMat = mats[ami];
+								if (addedMat.key == mat.key) {
+									added = true;
+									addedMat.count += mat.count;
+									break;
+								}
+							}
+							if (!added) {
+								mats.push({
+									key: mat.key,
+									iconID: mat.iconID,
+									name: mat.name,
+									rarity: mat.rarity,
+									order: mat.order,
+									count: mat.count
+								});
+							}
+						}
+					}
+				}
+				mats = mats.sort(function(matA, matB) {
+					if (matA.order > matB.order) return 1;
+					if (matA.order < matB.order) return -1;
+					if (matA.rarity > matB.rarity) return -1;
+					if (matA.rarity < matB.rarity) return 1;
+					if (matA.name > matB.name) return 1;
+					if (matA.name < matB.name) return -1;
+					return 0;
+				});
+				return mats;
+			};
+			for (var pi = 0; pi < $scope.object.parts.length; pi += 1) {
+				var equip = $scope.object.parts[pi];
+				if (self.selectedSetParts.indexOf(equip.key) == -1) {
+					continue;
+				}
+				if ('recipes' in equip && 'npc' in equip.recipes) {
+					npcRecipe = true;
+					if ('appearQuestName' in equip.recipes.npc) {
+						if (recipes.npc.appearQuestNames.indexOf(equip.recipes.npc.appearQuestName) == -1) {
+							recipes.npc.appearQuestNames.push(equip.recipes.npc.appearQuestName);
+						}
+					}
+					for (var si = 0; si < equip.recipes.npc.shops.length; si += 1) {
+						var shop = equip.recipes.npc.shops[si];
+						var added = false;
+						for (var asi = 0; asi < recipes.npc.shops.length; asi += 1) {
+							var addedShop = recipes.npc.shops[asi];
+							if (addedShop.key == shop.key) {
+								added = true;
+								break;
+							}
+						}
+						if (!added) {
+							recipes.npc.shops.push(shop);
+						}
+					}
+				}
+				if ('recipes' in equip && 'pc' in equip.recipes) {
+					pcRecipe = true;
+					var added = false;
+					for (var i = 0; i < recipes.pc.expertises.length; i += 1) {
+						var addedExpertise = recipes.pc.expertises[i];
+						if (addedExpertise.name == equip.recipes.pc.expertiseName) {
+							added = true;
+							if (addedExpertise.experienceRequired < equip.recipes.pc.expertiseExperienceRequired) {
+								addedExpertise.experienceRequired = equip.recipes.pc.expertiseExperienceRequired;
+							}
+							break;
+						}
+					}
+					if (!added) {
+						recipes.pc.expertises.push({
+							name: equip.recipes.pc.expertiseName,
+							experienceRequired: equip.recipes.pc.expertiseExperienceRequired
+						});
+					}
+				}
+			}
+			if (npcRecipe || pcRecipe) {
+				$scope.object.recipes = {};
+				var totalMats = 0;
+				if (npcRecipe) {
+					recipes.npc.mats = getSetMats('npc', $scope.object.parts);
+					totalMats += recipes.npc.mats.length;
+					$scope.object.recipes.npc = recipes.npc;
+				}
+				if (pcRecipe) {
+					recipes.pc.mats = getSetMats('pc', $scope.object.parts);
+					totalMats += recipes.pc.mats.length;
+					$scope.object.recipes.pc = recipes.pc;
+				}
+				if (totalMats == 0) {
+					$scope.object.recipes = null;
+				}
+			}
+			else {
+				$scope.object.recipes = null;
+			}
+		};
 
 		function hide() {
 			self.visible = false;
 			$state.go('^');
+		};
+
+		function toggleSetPart(key) {
+			var i = self.selectedSetParts.indexOf(key)
+			if (i == -1) {
+				self.selectedSetParts.push(key);
+			}
+			else {
+				self.selectedSetParts.splice(i, 1);
+			}
+			self.updateSetProperties();
+			self.updateSetRecipe();
+		};
+
+		function setPartIsSelected(key) {
+			return self.selectedSetParts.indexOf(key) >= 0;
+		};
+
+		function activeSetEffectKey() {
+			return self.selectedSetParts.length;
 		};
 	};
 

@@ -2,7 +2,7 @@
 	<div id="object-card" class="object-card object-material z2" flex-lg="60" flex-md="70" flex-sm="90" ng-click="$event.stopPropagation()">
 		<div ng-include="'/templates/object-material-title.html'"></div>
 		<div class="main">
-			<div ng-include="'/templates/object-material-stats.html'"></div>
+			<div ng-include="'/templates/object-material-properties.html'"></div>
 			<div ng-include="'/templates/object-material-parts.html'" ng-if="object.parts.length > 0"></div>
 			<div ng-include="'/templates/object-material-recipes.html'" ng-if="object.recipes != null"></div>
 		</div>

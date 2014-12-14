@@ -15,15 +15,30 @@
 				</div>
 			</li>
 		</ul>
-		<div class="appear" layout="horizontal" layout-align="center center" ng-if="object.recipes.npc.appearQuestName">
-			<div>Recipe unlocked after <span class="quest">{{object.recipes.npc.appearQuestName}}</span>.</div>
+		<div class="appear" layout="horizontal" layout-align="center center" ng-if="object.recipes.npc.appearQuestName || object.recipes.npc.appearQuestNames">
+			<div>
+				<span>Recipe unlocked after </span>
+				<span ng-if="object.recipes.npc.appearQuestName">
+					<span class="quest">{{object.recipes.npc.appearQuestName}}</span>.
+				</span>
+				<span ng-if="object.recipes.npc.appearQuestNames" ng-repeat="appearQuestName in object.recipes.npc.appearQuestNames">
+					<span class="quest">{{appearQuestName}}</span>{{!$last ? ' and ' : '.' }}
+				</span>
+			</div>
 		</div>
 	</div>
 	<div class="recipe pc" layout="vertical" flex-md="50" flex-sm>
 		<div class="crafted-by" layout="horizontal" layout-align="center center">
-			<div ng-if="object.recipes.pc">
+			<div ng-if="object.recipes.pc.expertiseName">
 				<span class="expertise">{{object.recipes.pc.expertiseName}}</span>
 				<span class="proficiency">({{object.recipes.pc.expertiseExperienceRequired}})</span>
+			</div>
+			<div ng-if="object.recipes.pc.expertises">
+				<span ng-repeat="expertise in object.recipes.pc.expertises">
+					<span class="expertise">{{expertise.name}}</span>
+					<span class="proficiency">({{expertise.experienceRequired}})</span>
+					{{!$last ? ' and ' : '' }}
+				</span>
 			</div>
 			<div ng-if="!(object.recipes.pc)">
 				<span>Not crafted with expertise.</span>

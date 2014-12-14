@@ -1,0 +1,9 @@
+<ul class="properties" ng-if="object.properties.length > 0">
+	<li ng-repeat="property in object.properties">
+		<span class="property">
+			<span class="key">{{property.shortName}}</span>
+			<span class="value">{{object[property.key]}}{{!$last ? ',' : '' }}</span>
+		</span>
+	</li>
+</ul>
+<div class="description" ng-if="object.description">{{object.description}}</div>

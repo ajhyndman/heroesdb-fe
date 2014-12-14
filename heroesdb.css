@@ -214,7 +214,6 @@ div#items table#table th {
 	text-align: left;
 	font-size: 0.9em;
 	font-weight: 300;
-	white-space: nowrap;
 }
 
 div#items table#table th:hover {
@@ -223,7 +222,6 @@ div#items table#table th:hover {
 
 div#items table#table th div.name {
 	padding: 0.3em 0 0.3em 0.6em;
-	cursor: pointer;
 }
 
 div#items table#table td {
@@ -322,40 +320,92 @@ div.object-material div.main {
 	background-color: #fff;
 }
 
-div.object-material ul.stats span.stat,
-div.object-material div.effects span.effect {
+div.object-material ul.properties span.property {
 	white-space: nowrap;
 }
 
-div.object-material ul.stats span.key,
-div.object-material div.effects span.key {
+div.object-material ul.properties span.key {
 	font-weight: 500;
 }
 
-div.object-material ul.stats li {
+div.object-material ul.properties li {
 	display: inline;
 	padding-right: 0.3em;
 }
 
-div.object-material ul.stats + div.description {
+div.object-material ul.properties + div.description {
 	margin-top: 1em;
 }
 
-div.object-material div.effects {
-	padding-left: 2em;
+
+
+div.object-material table.parts {
+	width: 100%;
 }
 
-div.object-material div.effects i {
-	margin: 0 0.3em;
+div.object-material table.parts tr > * {
+	padding: 0.3em 0.6em;
+	font-size: 0.9em;
 }
 
-div.object-material div.effects span.value {
-	padding-right: 0.3em;
+div.object-material table.parts thead th {
+	text-align: left;
+	font-weight: 300;
 }
 
-div.object-material ul.parts {
-	border-right: 1px solid #ddd;
+div.object-material table.parts tfoot.effects td {
+	font-weight: 500;
 }
+
+div.object-material table.parts th:first-child,
+div.object-material table.parts td:first-child {
+	padding-left: 0;
+}
+
+div.object-material table.parts tbody td:first-child {
+	width: 31px;
+	padding-right: 0;
+}
+
+div.object-material table.parts tbody td:nth-child(2) {
+	padding-left: 0;
+}
+
+div.object-material table.parts div.icon {
+	margin-right: 1em;
+	cursor: help;
+}
+
+div.object-material table.parts tbody tr {
+	opacity: 0.25;
+	cursor: pointer;
+}
+
+div.object-material table.parts tbody tr.selected {
+	opacity: 1;
+}
+
+div.object-material table.parts tbody tr:last-child td {
+	padding-bottom: 1em;
+}
+
+div.object-material table.parts tfoot.effects td {
+	height: 30px;
+}
+
+div.object-material table.parts tfoot.effects {
+	border-top: 1px solid #ddd;
+}
+
+div.object-material table.parts tfoot.effects tr {
+	display: none;
+}
+
+div.object-material table.parts tfoot.effects tr.active {
+	display: table-row;
+}
+
+
 
 div.object-material div.recipe.npc {
 	border-right: 1px solid #ddd;
@@ -383,15 +433,13 @@ div.object-material div.recipe.pc ul.mats {
 	margin: 1em 0 1em 2em;
 }
 
-div.object-material div.recipe ul.mats li.mat,
-div.object-material ul.parts li.part {
-	margin-top: 0.3em;
+div.object-material div.recipe ul.mats li.mat {
+	padding-top: 0.3em;
 	font-size: 0.9em;
 }
 
-div.object-material div.recipe ul.mats div.icon,
-div.object-material ul.parts li.part div.icon {
-	padding-right: 1em;
+div.object-material div.recipe ul.mats div.icon {
+	margin-right: 1em;
 	cursor: help;
 }
 
@@ -492,8 +540,8 @@ div.object-material div.icon {
 	height: 40px;
 }
 
-div.object-material div.recipe div.icon,
-div.object-material ul.parts div.icon {
+div.object-material div.recipe ul.mats div.icon,
+div.object-material table.parts div.icon {
 	width: 30px;
 	height: 30px;
 }

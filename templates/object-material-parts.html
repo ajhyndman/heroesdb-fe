@@ -1,22 +1,31 @@
-<div layout="horizontal">
-	<ul class="parts" flex="50">
-		<li class="part" ng-repeat="part in object.parts">
-			<div layout="horizontal" layout-align="start center">
-				<div class="icon" object-hovercard="{{part.key}}.equip"><img width="30" height="30" ng-src="/data/icons/{{part.iconID != null ? part.iconID : 0}}.png" /></div>
+<table class="parts">
+	<thead>
+		<tr>
+			<th colspan="2">Item</th>
+			<th>Type</th>
+			<th ng-repeat="column in columns">{{column.shortName}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr ng-class="{ 'selected': card.setPartIsSelected(part.key) }" ng-click="card.toggleSetPart(part.key);" ng-repeat="part in object.parts">
+			<td>
+				<div class="icon" object-hovercard="{{part.key}}.equip">
+					<img width="30" height="30" ng-src="/data/icons/{{part.iconID != null ? part.iconID : 0}}.png" />
+				</div>
+			</td>
+			<td>
 				<span class="name rarity{{part.rarity}}" flex>
 					<a ui-sref="^.item({ objectKey: part.key, objectType: 'equip' })">{{part.name}}</a>
 				</span>
-			</div>
-		</li>
-	</ul>
-	<div class="effects" flex="50">
-		<div ng-repeat="(partCount, effect) in object.effects">
-			<span>{{partCount}} part bonus</span>
-			<i class="fa fa-angle-double-right"></i>
-			<span class="effect" ng-repeat="(name, value) in effect">
-				<span class="key">{{name}}</span>
-				<span class="value">{{value}}{{!$last ? ',' : '' }}</span>
-			</span>
-		</div>
-	</div>
-</div>
+			</td>
+			<td>{{part.classificationText}}</td>
+			<td ng-repeat="column in columns">{{part[column.key]}}</td>
+		</tr>
+	</tbody>
+	<tfoot class="effects">
+		<tr ng-class="{ 'active': partCount == card.activeSetEffectKey() }" ng-repeat="(partCount, effect) in object.effects">
+			<td colspan="3">{{partCount}} part bonus</td>
+			<td ng-repeat="column in columns">{{effect[column.key]}}</td>
+		</tr>
+	</tfoot>
+</table>
