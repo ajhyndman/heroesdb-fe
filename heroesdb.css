@@ -309,8 +309,7 @@ div.object-material div.title div.icon {
 	padding-right: 1em;
 }
 
-div.object-material div.title div.set,
-div.object-material div.title div.parts,
+div.object-material div.title div.classification,
 div.object-material div.requirements > span {
 	font-size: 0.9em;
 }

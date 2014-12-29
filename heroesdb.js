@@ -206,17 +206,19 @@
 			else {
 				var query = $q.all([
 					$resource('/data/objects/:type/:key.json', { type: '@type', key: '@key' }).get({ type: type, key: key }).$promise,
-					ObjectProperties.get(),
 					Characters.get().$promise
 				]);
 				query.then(function(data) {
+					var defers = [];
 					var rawObject = data[0];
-					var objectProperties = data[1];
-					var characters = data[2];
+					var characters = data[1];
+					var objectProperties = ObjectProperties.get();
 					var object = {};
+					object.key = rawObject.key;
 					object.iconID = rawObject.iconID;
 					object.rarity = rawObject.rarity;
 					object.name = rawObject.name;
+					object.classification = rawObject.classification;
 					object.description = rawObject.description;
 					object.set = ('set' in rawObject) ? rawObject.set : null;
 					object.requiredLevel = rawObject.requiredLevel;
@@ -230,7 +232,28 @@
 							object.properties.push(property);
 						}
 					}
-					object.parts = ('parts' in rawObject) ? rawObject.parts : null;
+					if (!('parts' in rawObject)) {
+						object.parts = null;
+					}
+					else {
+						object.parts = [];
+						for (var i = 0; i < rawObject.parts.length; i += 1) {
+							var part = rawObject.parts[i];
+							object.parts.push(part);
+							if (part.key != null) {
+								var partDefer = self.get('equip', part.key);
+								defers.push(partDefer);
+								partDefer.then(function (data) {
+									for (var i = 0; i < object.parts.length; i += 1) {
+										if (object.parts[i].key == data.key) {
+											object.parts[i] = data;
+											break;
+										}
+									}
+								});
+							}
+						}
+					}
 					object.effects = ('effects' in rawObject) ? rawObject.effects : null;
 					object.classRestriction = [];
 					characters.forEach(function(character) {
@@ -242,7 +265,9 @@
 						object.classRestriction = [];
 					}
 					self.objects[type][key] = object;
-					defer.resolve(self.objects[type][key]);
+					$q.all(defers).then(function () {
+						defer.resolve(self.objects[type][key]);
+					});
 				});
 			}
 			return defer.promise;
@@ -884,7 +909,7 @@
 				if (self.selectedSetParts.indexOf(equip.key) == -1) {
 					continue;
 				}
-				if ('recipes' in equip && 'npc' in equip.recipes) {
+				if (equip.recipes != null && 'npc' in equip.recipes) {
 					npcRecipe = true;
 					if ('appearQuestName' in equip.recipes.npc) {
 						if (recipes.npc.appearQuestNames.indexOf(equip.recipes.npc.appearQuestName) == -1) {
@@ -906,7 +931,7 @@
 						}
 					}
 				}
-				if ('recipes' in equip && 'pc' in equip.recipes) {
+				if (equip.recipes && 'pc' in equip.recipes) {
 					pcRecipe = true;
 					var added = false;
 					for (var i = 0; i < recipes.pc.expertises.length; i += 1) {
@@ -955,7 +980,7 @@
 		};
 
 		function toggleSetPart(key) {
-			var i = self.selectedSetParts.indexOf(key)
+			var i = self.selectedSetParts.indexOf(key);
 			if (i == -1) {
 				self.selectedSetParts.push(key);
 			}

@@ -18,7 +18,7 @@
 					<a ui-sref="^.item({ objectKey: part.key, objectType: 'equip' })">{{part.name}}</a>
 				</span>
 			</td>
-			<td>{{part.classificationText}}</td>
+			<td>{{part.classification}}</td>
 			<td ng-repeat="column in columns">{{part[column.key]}}</td>
 		</tr>
 	</tbody>
