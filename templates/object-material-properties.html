@@ -2,7 +2,12 @@
 	<li ng-repeat="property in object.properties">
 		<span class="property">
 			<span class="key">{{property.shortName}}</span>
-			<span class="value">{{object[property.key]}}{{!$last ? ',' : '' }}</span>
+			<span class="value">{{object[property.key]}}{{!$last || (card && object.quality) ? ',' : '' }}</span>
+		</span>
+	</li>
+	<li ng-if="card && object.quality">
+		<span class="property quality">
+			<i class="fa" ng-class="{ 'fa-star': object.quality >= quality, 'fa-star-o': object.quality < quality }" ng-click="card.setQuality(quality)" ng-repeat="quality in ['1', '2', '3', '4', '5']"></i>
 		</span>
 	</li>
 </ul>

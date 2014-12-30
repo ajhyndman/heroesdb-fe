@@ -10,12 +10,12 @@
 		<tr ng-class="{ 'selected': card.setPartIsSelected(part.key) }" ng-click="card.toggleSetPart(part.key);" ng-repeat="part in object.parts">
 			<td>
 				<div class="icon" object-hovercard="{{part.key}}.equip">
-					<img width="30" height="30" ng-src="/data/icons/{{part.iconID != null ? part.iconID : 0}}.png" />
+					<img width="30" height="30" ng-src="/data/icons/{{part.iconID ? part.iconID : 0}}.png" />
 				</div>
 			</td>
 			<td>
 				<span class="name rarity{{part.rarity}}" flex>
-					<a ui-sref="^.item({ objectKey: part.key, objectType: 'equip' })">{{part.name}}</a>
+					<a ui-sref="^.item({ objectKey: part.key, objectType: 'equip' })" ng-click="$event.stopPropagation()">{{part.name}}</a>
 				</span>
 			</td>
 			<td>{{part.classification}}</td>

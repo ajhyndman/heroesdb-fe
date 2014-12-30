@@ -333,6 +333,10 @@ div.object-material ul.properties li {
 	padding-right: 0.3em;
 }
 
+div.object-material ul.properties li span.quality i {
+	cursor: pointer;
+}
+
 div.object-material ul.properties + div.description {
 	margin-top: 1em;
 }

@@ -75,6 +75,7 @@
 	app.factory('Characters', CharactersService);
 	app.factory('Classification', ClassificationService);
 	app.factory('ObjectList', ObjectListService);
+	app.factory('QualityType', QualityTypeService);
 	app.factory('Object', ObjectService);
 	app.factory('ObjectProperties', ObjectPropertiesService);
 	app.factory('ObjectHovercard', ObjectHovercardService);
@@ -190,6 +191,19 @@
 		return { get: self.get };
 	};
 
+	QualityTypeService.$inject = ['$resource'];
+	function QualityTypeService($resource) {
+		var self = this;
+		self.qualityTypes = {};
+		self.get = function(key) {
+			if (!(key in self.qualityTypes)) {
+				self.qualityTypes[key] = $resource('/data/quality-types/:key.json', { key: '@key' }).get({ key: key });
+			}
+			return self.qualityTypes[key];
+		};
+		return { get: self.get };
+	};
+
 	ObjectService.$inject = ['$q', '$resource', 'ObjectProperties', 'Characters'];
 	function ObjectService($q, $resource, ObjectProperties, Characters) {
 		var self = this;
@@ -216,14 +230,27 @@
 					var object = {};
 					object.key = rawObject.key;
 					object.iconID = rawObject.iconID;
-					object.rarity = rawObject.rarity;
 					object.name = rawObject.name;
 					object.classification = rawObject.classification;
 					object.description = rawObject.description;
-					object.set = ('set' in rawObject) ? rawObject.set : null;
-					object.requiredLevel = rawObject.requiredLevel;
+					object.rarity = rawObject.rarity;
+					if (rawObject.qualityTypeKey) {
+						object.qualityTypeKey = rawObject.qualityTypeKey;
+					}
+					if (rawObject.set) {
+						object.set = rawObject.set;
+					}
 					object.requiredSkills = rawObject.requiredSkills;
-					object.recipes = ('recipes' in rawObject) ? rawObject.recipes : null;
+					object.requiredLevel = rawObject.requiredLevel;
+					object.classRestriction = [];
+					characters.forEach(function(character) {
+						if ((rawObject.classRestriction & character.id) == character.id) {
+							object.classRestriction.push(character.name);
+						}
+					});
+					if (object.classRestriction.length == characters.length) {
+						object.classRestriction = [];
+					}
 					object.properties = [];
 					for (var i = 0; i < objectProperties.length; i++) {
 						var property = objectProperties[i];
@@ -232,10 +259,10 @@
 							object.properties.push(property);
 						}
 					}
-					if (!('parts' in rawObject)) {
-						object.parts = null;
+					if (rawObject.recipes) {
+						object.recipes = rawObject.recipes;
 					}
-					else {
+					if (rawObject.parts) {
 						object.parts = [];
 						for (var i = 0; i < rawObject.parts.length; i += 1) {
 							var part = rawObject.parts[i];
@@ -255,15 +282,6 @@
 						}
 					}
 					object.effects = ('effects' in rawObject) ? rawObject.effects : null;
-					object.classRestriction = [];
-					characters.forEach(function(character) {
-						if ((rawObject.classRestriction & character.id) == character.id) {
-							object.classRestriction.push(character.name);
-						}
-					});
-					if (object.classRestriction.length == characters.length) {
-						object.classRestriction = [];
-					}
 					self.objects[type][key] = object;
 					$q.all(defers).then(function () {
 						defer.resolve(self.objects[type][key]);
@@ -757,14 +775,15 @@
 		};
 	};
 
-	ObjectCardController.$inject = ['$state', '$stateParams', '$scope', 'Object'];
-	function ObjectCardController($state, $stateParams, $scope, Object) {
+	ObjectCardController.$inject = ['$state', '$stateParams', '$scope', '$q', 'Object', 'QualityType'];
+	function ObjectCardController($state, $stateParams, $scope, $q, Object, QualityType) {
 		var self = this;
 		self.hide = hide;
 		self.visible = false;
 		self.setSetPartColumns = setSetPartColumns;
 		self.updateSetProperties = updateSetProperties;
 		self.updateSetRecipe = updateSetRecipe;
+		self.setQuality = setQuality;
 		self.selectedSetParts = [];
 		self.toggleSetPart = toggleSetPart;
 		self.setPartIsSelected = setPartIsSelected;
@@ -772,7 +791,13 @@
 
 		Object.get($stateParams.objectType, $stateParams.objectKey).then(function(data) {
 			$scope.object = data;
-			if ($stateParams.objectType == 'set') {
+			if ('quality' in $scope.object) {
+				self.setQuality(2);
+			}
+			else {
+				$scope.object.quality = 2;
+			}
+			if ('parts' in $scope.object) {
 				for (var pi = 0; pi < $scope.object.parts.length; pi += 1) {
 					var equip = $scope.object.parts[pi];
 					self.selectedSetParts.push(equip.key);
@@ -977,6 +1002,46 @@
 		function hide() {
 			self.visible = false;
 			$state.go('^');
+		};
+
+		function setQuality(quality) {
+			var setEquipQuality = function(equip, quality) {
+				var defer = QualityType.get(equip.qualityTypeKey).$promise;
+				defer.then(function (qualityType) {
+					for (var i = 0; i < equip.properties.length; i += 1) {
+						var property = equip.properties[i];
+						if (!(quality in qualityType)) {
+							if ((property.key + 'Base') in equip) {
+								equip[property.key] = equip[property.key + 'Base'];
+							}
+						}
+						else if (property.key in qualityType[quality]) {
+							if (!((property.key + 'Base') in equip)) {
+								equip[property.key + 'Base'] = equip[property.key];
+							}
+							equip[property.key] = Math.floor(equip[property.key + 'Base'] * (1 + qualityType[quality][property.key]));
+						}
+					}
+					equip.quality = quality;
+				});
+				return defer;
+			};
+			if ('qualityTypeKey' in $scope.object) {
+				setEquipQuality($scope.object, quality);
+			}
+			else if ('parts' in $scope.object) {
+				var defers = [];
+				for (var i = 0; i < $scope.object.parts.length; i += 1) {
+					var equip = $scope.object.parts[i];
+					if ('qualityTypeKey' in equip) {
+						defers.push(setEquipQuality(equip, quality));
+						$scope.object.quality = quality;
+					}
+				}
+				$q.all(defers).then(function() {
+					self.updateSetProperties();
+				});
+			}
 		};
 
 		function toggleSetPart(key) {
