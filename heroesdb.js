@@ -794,8 +794,16 @@
 			if ('quality' in $scope.object) {
 				self.setQuality(2);
 			}
-			else {
+			else if ('qualityTypeKey' in $scope.object) {
 				$scope.object.quality = 2;
+			}
+			else if ('parts' in $scope.object) {
+				for (var i = 0; i < $scope.object.parts.length; i += 1) {
+					if ('qualityTypeKey' in $scope.object.parts[i]) {
+						$scope.object.quality = 2;
+						break;
+					}
+				}
 			}
 			if ('parts' in $scope.object) {
 				for (var pi = 0; pi < $scope.object.parts.length; pi += 1) {
