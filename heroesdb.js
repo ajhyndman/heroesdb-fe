@@ -76,6 +76,7 @@
 	app.factory('Classification', ClassificationService);
 	app.factory('ObjectList', ObjectListService);
 	app.factory('QualityType', QualityTypeService);
+	app.factory('EnhanceType', EnhanceTypeService);
 	app.factory('Object', ObjectService);
 	app.factory('ObjectProperties', ObjectPropertiesService);
 	app.factory('ObjectHovercard', ObjectHovercardService);
@@ -83,6 +84,7 @@
 	app.directive('objectsTableMenu', objectsTableMenuDirective);
 	app.directive('characterRestriction', characterRestrictionDirective);
 	app.directive('objectHovercard', objectHovercardDirective);
+	app.directive('enhanceSelector', enhanceSelectorDirective);
 
 	app.controller('ItemsController', ItemsController);
 	app.controller('ObjectsTableMenuController', ObjectsTableMenuController);
@@ -204,6 +206,19 @@
 		return { get: self.get };
 	};
 
+	EnhanceTypeService.$inject = ['$resource'];
+	function EnhanceTypeService($resource) {
+		var self = this;
+		self.enhanceTypes = {};
+		self.get = function(key) {
+			if (!(key in self.enhanceTypes)) {
+				self.enhanceTypes[key] = $resource('/data/enhance-types/:key.json', { key: '@key' }).get({ key: key });
+			}
+			return self.enhanceTypes[key];
+		};
+		return { get: self.get };
+	};
+
 	ObjectService.$inject = ['$q', '$resource', 'ObjectProperties', 'Characters'];
 	function ObjectService($q, $resource, ObjectProperties, Characters) {
 		var self = this;
@@ -236,6 +251,9 @@
 					object.rarity = rawObject.rarity;
 					if (rawObject.qualityTypeKey) {
 						object.qualityTypeKey = rawObject.qualityTypeKey;
+					}
+					if (rawObject.enhanceTypeKey) {
+						object.enhanceTypeKey = rawObject.enhanceTypeKey;
 					}
 					if (rawObject.set) {
 						object.set = rawObject.set;
@@ -300,6 +318,7 @@
 			{ key: 'atk', name: 'Attack', shortName: 'ATT', base: false },
 			{ key: 'patk', name: 'Attack', shortName: 'ATT', base: true },
 			{ key: 'matk', name: 'Magic Attack', shortName: 'M.ATT', base: true },
+			{ key: 'aatk', name: 'Additional Damage', shortName: 'Additional Damage', base: true },
 			{ key: 'speed', name: 'Attack Speed', shortName: 'AS', base: true },
 			{ key: 'crit', name: 'Critical Chance', shortName: 'CRIT', base: true },
 			{ key: 'bal', name: 'Balance', shortName: 'BAL', base: true },
@@ -311,6 +330,8 @@
 			{ key: 'hp', name: 'Health Points', shortName: 'HP', base: true },
 			{ key: 'critres', name: 'Critical Resistance', shortName: 'CRITRES', base: true },
 			{ key: 'stamina', name: 'Stamina', shortName: 'Stamina', base: true },
+			{ key: 'durability', name: 'Durability', shortName: 'Durability', base: false },
+			{ key: 'weight', name: 'Weight', shortName: 'Weight', base: true },
 			{ key: 'requiredLevel', name: 'Required Level', shortName: 'Level', base: false },
 			{ key: 'classRestriction', name: 'Character Restriction', shortName: 'Character', base: false }
 		];
@@ -483,6 +504,66 @@
 				});
 			}
 		};
+	};
+
+	enhanceSelectorDirective.$inject = ['$timeout'];
+	function enhanceSelectorDirective($timeout) {
+		return {
+			restrict: 'A',
+			link: function(scope, element, attrs, controller) {
+				angular.element(element).attr('draggable', 'true');
+				element.bind('dragstart', function(event) {
+					if (event.target.className.indexOf('enabled') >= 0) {
+						event.dataTransfer.effectAllowed = 'move';
+						event.dataTransfer.setData('text', '');
+						scope.$apply(function() {
+							scope.card.enhanceSelectorData.position = event.target.className.indexOf('end') >= 0 ? 'end' : 'start';
+						});
+					}
+				});
+				element.bind("dragenter", function(event) {
+					if ('dataset' in event.target && 'level' in event.target.dataset) {
+						$timeout.cancel(scope.card.enhanceSelectorData.delayedUpade);
+						var targetLevel = parseInt(event.target.dataset.level);
+						if (scope.card.enhanceSelectorData.position == 'start') {
+							if (scope.card.enhanceStart != targetLevel) {
+								scope.$apply(function() {
+									scope.card.enhanceSelectorData.target = targetLevel;
+									scope.card.enhanceSelectorData.delayedUpade = $timeout(function() {
+										if (scope.card.enhanceSelectorData.target == targetLevel) {
+											scope.card.setEnhanceStart(targetLevel);
+										}
+									}, 25);
+								});
+							}
+						}
+						else {
+							if (scope.card.enhanceEnd != targetLevel) {
+								scope.$apply(function() {
+									scope.card.enhanceSelectorData.target = targetLevel;
+									scope.card.enhanceSelectorData.delayedUpade = $timeout(function() {
+										if (scope.card.enhanceSelectorData.target == targetLevel) {
+											scope.card.setEnhanceEnd(targetLevel);
+										}
+									}, 25);
+								});
+							}
+						}
+					}
+				});
+				element.bind("dragover", function(event) {
+					event.preventDefault();
+				});
+				element.bind("drop", function(event) {
+					event.preventDefault();
+				});
+			},
+			controller: function() {
+				var self = this;
+				self.dragFrom = 'asd';
+				self.r = Math.random();
+			}
+		}
 	};
 
 
@@ -775,15 +856,26 @@
 		};
 	};
 
-	ObjectCardController.$inject = ['$state', '$stateParams', '$scope', '$q', 'Object', 'QualityType'];
-	function ObjectCardController($state, $stateParams, $scope, $q, Object, QualityType) {
+	ObjectCardController.$inject = ['$state', '$stateParams', '$scope', '$q', 'Object', 'ObjectProperties', 'QualityType', 'EnhanceType'];
+	function ObjectCardController($state, $stateParams, $scope, $q, Object, ObjectProperties, QualityType, EnhanceType) {
 		var self = this;
-		self.hide = hide;
 		self.visible = false;
+		self.hide = hide;
 		self.setSetPartColumns = setSetPartColumns;
+		self.resetQuality = resetQuality;
+		self.setEquipQuality = setEquipQuality;
+		self.setQuality = setQuality;
+		self.enhanceSelectorData = {};
+		self.enhance = {};
+		self.enhanceStart = null;
+		self.enhanceEnd = null;
+		self.setEnhanceStats = setEnhanceStats;
+		self.setEnhanceInfo = setEnhanceInfo;
+		self.resetEnhance = resetEnhance;
+		self.setEnhanceStart = setEnhanceStart;
+		self.setEnhanceEnd = setEnhanceEnd;
 		self.updateSetProperties = updateSetProperties;
 		self.updateSetRecipe = updateSetRecipe;
-		self.setQuality = setQuality;
 		self.selectedSetParts = [];
 		self.toggleSetPart = toggleSetPart;
 		self.setPartIsSelected = setPartIsSelected;
@@ -791,10 +883,9 @@
 
 		Object.get($stateParams.objectType, $stateParams.objectKey).then(function(data) {
 			$scope.object = data;
-			if ('quality' in $scope.object) {
-				self.setQuality(2);
-			}
-			else if ('qualityTypeKey' in $scope.object) {
+			self.resetQuality();
+			self.resetEnhance();
+			if (!('quality' in $scope.object) && 'qualityTypeKey' in $scope.object) {
 				$scope.object.quality = 2;
 			}
 			else if ('parts' in $scope.object) {
@@ -806,15 +897,49 @@
 				}
 			}
 			if ('parts' in $scope.object) {
-				for (var pi = 0; pi < $scope.object.parts.length; pi += 1) {
-					var equip = $scope.object.parts[pi];
+				for (var i = 0; i < $scope.object.parts.length; i += 1) {
+					var equip = $scope.object.parts[i];
 					self.selectedSetParts.push(equip.key);
 				}
 				self.setSetPartColumns();
 				self.updateSetRecipe();
 			}
-			self.visible = true;
+			if (!('enhanceTypeKey' in $scope.object)) {
+				self.visible = true;
+			}
+			else {
+				EnhanceType.get($scope.object.enhanceTypeKey).$promise.then(function(enhanceType) {
+					enhanceType.levels = [];
+					for (var level = 1; level <= 15; level += 1) {
+						if (level in enhanceType) {
+							switch (enhanceType[level].risk) {
+								case 'none':
+									enhanceType[level].riskText = 'no penalty'
+									break;
+								case 'downgrade':
+									enhanceType[level].riskText = 'downgrade enhancement by 1'
+									break;
+								case 'reset':
+									enhanceType[level].riskText = 'reset enhancement'
+									break;
+								case 'break':
+									enhanceType[level].riskText = 'break item'
+									break;
+							}
+							enhanceType[level].level = level;
+							enhanceType.levels.push(enhanceType[level]);
+						}
+					}
+					$scope.object.enhanceType = enhanceType;
+					self.visible = true;
+				});
+			}
 		});
+
+		function hide() {
+			self.visible = false;
+			$state.go('^');
+		};
 
 		function setSetPartColumns() {
 			var columns = [];
@@ -854,6 +979,204 @@
 					}
 				}
 			}
+		};
+
+		function resetQuality() {
+			if ('quality' in $scope.object && $scope.object.quality != 2) {
+				self.setQuality(2);
+			}
+			if ('parts' in $scope.object) {
+				for (var i = 0; i < $scope.object.parts.length; i += 1) {
+					var equip = $scope.object.parts[i];
+					if ('quality' in equip && equip.quality != 2) {
+						self.setEquipQuality(equip, 2);
+					}
+				}
+			}
+		}
+
+		function setEquipQuality(equip, level) {
+			var defer = QualityType.get(equip.qualityTypeKey).$promise;
+			defer.then(function (qualityType) {
+				for (var i = 0; i < equip.properties.length; i += 1) {
+					var property = equip.properties[i];
+					if (!(level in qualityType)) {
+						if ((property.key + 'QualityBase') in equip) {
+							equip[property.key] = equip[property.key + 'QualityBase'];
+						}
+					}
+					else if (property.key in qualityType[level]) {
+						if (!((property.key + 'QualityBase') in equip)) {
+							equip[property.key + 'QualityBase'] = equip[property.key];
+						}
+						equip[property.key] = Math.floor(equip[property.key + 'QualityBase'] * (1 + qualityType[level][property.key]));
+						delete equip[property.key + 'EnhanceBase'];
+					}
+				}
+				equip.quality = level;
+			});
+			return defer;
+		}
+
+		function setQuality(level) {
+			if ('qualityTypeKey' in $scope.object) {
+				this.setEquipQuality($scope.object, level).then(function() {
+					setEnhanceStats();
+				});
+			}
+			else if ('parts' in $scope.object) {
+				var defers = [];
+				for (var i = 0; i < $scope.object.parts.length; i += 1) {
+					var equip = $scope.object.parts[i];
+					if ('qualityTypeKey' in equip) {
+						defers.push(this.setEquipQuality(equip, level));
+						$scope.object.quality = level;
+					}
+				}
+				$q.all(defers).then(function() {
+					self.updateSetProperties();
+				});
+			}
+		}
+
+		function setEnhanceStats() {
+			var equip = $scope.object;
+			if ('enhance' in equip) {
+				var level = equip.enhanceType[self.enhanceEnd];
+				if (!('nameEnhanceBase' in equip)) {
+					equip.nameEnhanceBase = equip.name;
+				}
+				equip.name = '+' + level.level + ' ' + equip.nameEnhanceBase;
+				if ('aatk' in level && !('aatk' in equip)) {
+					var objectProperties = ObjectProperties.get();
+					var aatkProperty = null;
+					for (var i = 0; i < objectProperties.length; i += 1) {
+						if (objectProperties[i].key == 'aatk') {
+							aatkProperty = objectProperties[i];
+							break;
+						}
+					}
+					equip.aatk = 0;
+					if (equip.properties[1].key == 'matk') {
+						equip.properties.splice(2, 0, aatkProperty);
+					}
+					else {
+						equip.properties.splice(1, 0, aatkProperty);
+					}
+				}
+				for (var i = 0; i < equip.properties.length; i += 1) {
+					var property = equip.properties[i];
+					if (property.key in level) {
+						if (!((property.key + 'EnhanceBase') in equip)) {
+							equip[property.key + 'EnhanceBase'] = equip[property.key];
+						}
+						if (property.key == 'weight') {
+							equip[property.key] = Math.floor(equip[property.key + 'EnhanceBase'] * (1 + level[property.key]));
+						}
+						else {
+							equip[property.key] = Math.floor(equip[property.key + 'EnhanceBase'] + level[property.key]);
+						}
+					}
+					else {
+						if ((property.key + 'EnhanceBase') in equip) {
+							equip[property.key] = equip[property.key + 'EnhanceBase'];
+						}
+					}
+				}
+			}
+		}
+
+		function setEnhanceInfo() {
+			var enhanceType = $scope.object.enhanceType;
+			var probability = 0.9;
+			self.enhance.start = self.enhanceStart;
+			self.enhance.end = self.enhanceEnd;
+			self.enhance.mats = { array: [] };
+			var chance = 1.0;
+			for (var i = self.enhanceStart; i <= self.enhanceEnd; i += 1) {
+				chance *= enhanceType[i].chance;
+				for (var mat in enhanceType[i].mats) {
+					if (enhanceType[i].mats[mat] > 0) {
+						if (!(mat in self.enhance.mats)) {
+							enhanceType.mats[mat].key = mat;
+							self.enhance.mats.array.push(enhanceType.mats[mat]);
+							self.enhance.mats[mat] = enhanceType.mats[mat];
+							self.enhance.mats[mat].count = 0;
+						}
+						self.enhance.mats[mat].count += enhanceType[i].mats[mat];
+					}
+				}
+			}
+			self.enhance.properties = [];
+			for (var i = 0; i < $scope.object.properties.length; i += 1) {
+				var property = $scope.object.properties[i];
+				if (property.key in enhanceType[self.enhanceEnd]) {
+					self.enhance.properties.push(property);
+					if (property.key == 'weight') {
+						self.enhance[property.key] = Math.floor($scope.object[property.key + 'EnhanceBase'] * enhanceType[self.enhanceEnd][property.key]);
+					}
+					else {
+						self.enhance[property.key] = enhanceType[self.enhanceEnd][property.key];
+						if (self.enhanceStart > 1 && property.key in enhanceType[self.enhanceStart - 1]) {
+							self.enhance[property.key] -= enhanceType[self.enhanceStart - 1][property.key];
+						}
+					}
+				}
+			}
+			self.enhance.chance = Math.round(chance * 10000) / 100;
+			self.enhance.probability = probability * 100;
+			self.enhance.tries = chance == 1 ? 1 : Math.floor(Math.log(1 - probability) / Math.log(1 - chance));
+		}
+
+		function resetEnhance() {
+			var resetEquipEnhance = function(equip) {
+				if ('enhance' in equip) {
+					equip.name = equip.nameEnhanceBase;
+					for (var i = 0; i < equip.properties.length; i += 1) {
+						var property = equip.properties[i];
+						if ((property.key + 'EnhanceBase') in equip) {
+							equip[property.key] = equip[property.key + 'EnhanceBase'];
+						}
+					}
+					delete equip.enhance;
+				}
+			};
+			var equip = $scope.object;
+			resetEquipEnhance(equip);
+			if ('parts' in equip) {
+				for (var i = 0; i < equip.parts.length; i += 1) {
+					var part = equip.parts[i];
+					resetEquipEnhance(part);
+				}
+			}
+			self.enhanceStart = null;
+			self.enhanceEnd = null;
+		}
+
+		function setEnhanceStart(level) {
+			if (self.enhanceEnd < level) {
+				self.enhanceEnd = level;
+				self.setEnhanceStats();
+			}
+			self.enhanceStart = level;
+			self.setEnhanceInfo();
+		}
+
+		function setEnhanceEnd(level) {
+			if (self.enhanceEnd == level) {
+				resetEnhance();
+				return;
+			}
+			if (self.enhanceStart == null) {
+				self.enhanceStart = 1;
+			}
+			else if (self.enhanceStart > level) {
+				self.enhanceStart = level;
+			}
+			self.enhanceEnd = level;
+			$scope.object.enhance = level;
+			self.setEnhanceStats();
+			self.setEnhanceInfo();
 		};
 
 		function updateSetProperties() {
@@ -1004,51 +1327,6 @@
 			}
 			else {
 				$scope.object.recipes = null;
-			}
-		};
-
-		function hide() {
-			self.visible = false;
-			$state.go('^');
-		};
-
-		function setQuality(quality) {
-			var setEquipQuality = function(equip, quality) {
-				var defer = QualityType.get(equip.qualityTypeKey).$promise;
-				defer.then(function (qualityType) {
-					for (var i = 0; i < equip.properties.length; i += 1) {
-						var property = equip.properties[i];
-						if (!(quality in qualityType)) {
-							if ((property.key + 'Base') in equip) {
-								equip[property.key] = equip[property.key + 'Base'];
-							}
-						}
-						else if (property.key in qualityType[quality]) {
-							if (!((property.key + 'Base') in equip)) {
-								equip[property.key + 'Base'] = equip[property.key];
-							}
-							equip[property.key] = Math.floor(equip[property.key + 'Base'] * (1 + qualityType[quality][property.key]));
-						}
-					}
-					equip.quality = quality;
-				});
-				return defer;
-			};
-			if ('qualityTypeKey' in $scope.object) {
-				setEquipQuality($scope.object, quality);
-			}
-			else if ('parts' in $scope.object) {
-				var defers = [];
-				for (var i = 0; i < $scope.object.parts.length; i += 1) {
-					var equip = $scope.object.parts[i];
-					if ('qualityTypeKey' in equip) {
-						defers.push(setEquipQuality(equip, quality));
-						$scope.object.quality = quality;
-					}
-				}
-				$q.all(defers).then(function() {
-					self.updateSetProperties();
-				});
 			}
 		};
 

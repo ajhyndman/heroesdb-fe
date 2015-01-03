@@ -1,0 +1,41 @@
+<div class="enhance" layout="vertical">
+	<div class="levels" layout="horizontal">
+		<div class="level risk-{{level.risk}}" title="{{level.chance * 100}}% success chance, {{level.riskText}} on failure." ng-class="{ 'selected': level.level >= card.enhanceStart && level.level <= card.enhanceEnd, 'start': level.level == card.enhanceStart, 'end': level.level == card.enhanceEnd, 'unselected': card.enhanceStart != null && (level.level < card.enhanceStart || level.level > card.enhanceEnd) }" ng-repeat="level in object.enhanceType.levels" flex>
+			<div class="name" layout="horizontal" layout-align="center center" ng-click="card.setEnhanceEnd(level.level)">
+				<div class="selector" layout="horizontal" layout-align="center center" data-level="{{level.level}}" ng-class="{ 'enabled': level.level == card.enhanceStart || level.level == card.enhanceEnd, 'start': level.level == card.enhanceStart, 'end': level.level == card.enhanceEnd }" enhance-selector>
+					<span>+{{level.level}}</span>
+				</div>
+			</div>
+			<div class="marker" ng-if="card.enhanceStart != null"></div>
+			<div class="chance" layout="horizontal" layout-align="center center" ng-if="card.enhanceStart != null">
+				<span>{{level.chance * 100}}%</span>
+			</div>
+		</div>
+	</div>
+	<div class="info" ng-if="card.enhanceStart != null">
+		<div>
+			<div>Grants:</div>
+			<ul class="properties">
+				<li ng-repeat="property in card.enhance.properties">
+					<span class="property">
+						<span class="key">{{property.shortName}}</span>
+						<span class="value">{{card.enhance[property.key] > 0 ? '+' : ''}}{{card.enhance[property.key]}}{{!$last ? ',' : '' }}</span>
+					</span>
+				</li>
+			</ul>
+		</div>
+		<div>
+			<div>Requires:</div>
+			<ul class="mats">
+				<li class="mat" ng-repeat="mat in card.enhance.mats.array | orderBy: 'order'">
+					<span class="name rarity{{mat.rarity}}">{{mat.name}}</span>
+					<span>x{{mat.count | number}}{{!$last ? ', ' : ''}}</span>
+				</li>
+			</ul>
+		</div>
+		<div>
+			<div>Chance:</div>
+			<div class="chance"><span>Enhancement without a failure <span ng-if="card.enhance.start != 1">from <strong>+{{card.enhance.start - 1}}</strong> </span>to <strong>+{{card.enhance.end}}</strong> has a <strong>{{card.enhance.chance}}% chance</strong>, more than <strong>{{card.enhance.tries}} <ng-pluralize count="card.enhance.tries" when="{ '1': 'try', 'other': 'tries' }"></ng-pluralize></strong> required for a {{card.enhance.probability}}% probability.</span></div>
+		</div>
+	</div>
+</div>

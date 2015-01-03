@@ -1,5 +1,5 @@
 <ul class="properties" ng-if="object.properties.length > 0">
-	<li ng-repeat="property in object.properties">
+	<li ng-repeat="property in object.properties" ng-if="object[property.key] != 0">
 		<span class="property">
 			<span class="key">{{property.shortName}}</span>
 			<span class="value">{{object[property.key]}}{{!$last || (card && object.quality) ? ',' : '' }}</span>
@@ -7,7 +7,7 @@
 	</li>
 	<li ng-if="card && object.quality">
 		<span class="property quality">
-			<i class="fa" ng-class="{ 'fa-star': object.quality >= quality, 'fa-star-o': object.quality < quality }" ng-click="card.setQuality(quality)" ng-repeat="quality in ['1', '2', '3', '4', '5']"></i>
+			<i class="fa" ng-class="{ 'fa-star': object.quality >= level, 'fa-star-o': object.quality < level }" ng-click="card.setQuality(level)" ng-repeat="level in [1, 2, 3, 4, 5]"></i>
 		</span>
 	</li>
 </ul>

@@ -41,6 +41,10 @@ abbr {
 	cursor: help;
 }
 
+strong {
+	font-weight: 500;
+}
+
 a,
 a:visited,
 a:focus {
@@ -223,6 +227,7 @@ div#items table#table th:hover {
 
 div#items table#table th div.name {
 	padding: 0.3em 0 0.3em 0.6em;
+	text-transform: uppercase;
 }
 
 div#items table#table td {
@@ -343,6 +348,126 @@ div.object-material ul.properties + div.description {
 
 
 
+div.object-material div.enhance div.info {
+	padding: 1em 0;
+	border-bottom: 1px solid #ddd;
+}
+
+div.object-material div.enhance div.level {
+	border: 1px solid transparent;
+	border-right: 0;
+	border-left: 0;
+}
+
+div.object-material div.enhance div.level div.name,
+div.object-material div.enhance div.level div.marker,
+div.object-material div.enhance div.level div.chance {
+	border: 1px solid transparent;
+	border-top: 0;
+	border-bottom: 0;
+}
+
+div.object-material div.enhance div.level.unselected {
+	border-bottom: 1px solid #ddd;
+}
+
+div.object-material div.enhance div.level.selected {
+	border-top: 1px solid #ddd;
+}
+
+div.object-material div.enhance div.level.selected.start div.name,
+div.object-material div.enhance div.level.selected.start div.marker,
+div.object-material div.enhance div.level.selected.start div.chance {
+	border-left: 1px solid #ddd;
+}
+
+div.object-material div.enhance div.level.selected.end div.name,
+div.object-material div.enhance div.level.selected.end div.marker,
+div.object-material div.enhance div.level.selected.end div.chance {
+	border-right: 1px solid #ddd;
+}
+
+div.object-material div.enhance div.level div.name {
+	font-weight: 500;
+}
+
+div.object-material div.enhance div.level div.selector {
+	width: 2.2em;
+	height: 2.2em;
+	cursor: pointer;
+}
+
+div.object-material div.enhance div.level div.selector.enabled {
+	border-radius: 3em;
+	background-color: #e0e0e0;
+	cursor: move;
+}
+
+div.object-material div.enhance div.level div.name,
+div.object-material div.enhance div.level div.chance span {
+	padding: 0.3em 0 0.3em 0;
+}
+
+div.object-material div.enhance div.level div.marker {
+	height: 0.5em;
+}
+
+div.object-material div.enhance div.level.selected div.marker {
+	cursor: help;
+}
+
+div.object-material div.enhance div.level.selected.risk-none div.marker {
+	border-color: #2e7d32;
+	background-color: #2e7d32;
+}
+
+div.object-material div.enhance div.level.selected.risk-downgrade div.marker {
+	border-color: #827717;
+	background-color: #827717;
+}
+
+div.object-material div.enhance div.level.selected.risk-reset div.marker {
+	border-color: #ef6c00;
+	background-color: #ef6c00;
+}
+
+div.object-material div.enhance div.level.selected.risk-break div.marker {
+	border-color: #d84315;
+	background-color: #d84315;
+}
+
+div.object-material div.enhance div.level div.chance {
+	visibility: hidden;
+	font-size: 0.9em;
+}
+
+div.object-material div.enhance div.level.selected div.chance {
+	visibility: visible;
+	cursor: help;
+}
+
+div.object-material div.enhance div.info > div {
+	display: table-row;
+}
+
+div.object-material div.enhance div.info > div > * {
+	display: table-cell;
+	padding: 0.3em 0;
+}
+
+div.object-material div.enhance div.info > div > *:first-child {
+	padding-right: 0.3em;
+	font-weight: 300;
+	text-transform: uppercase;
+}
+
+div.object-material div.enhance div.info ul.mats li.mat {
+	display: inline;
+	padding-right: 0.3em;
+}
+
+
+
 div.object-material table.parts {
 	width: 100%;
 }
@@ -355,6 +480,7 @@ div.object-material table.parts tr > * {
 div.object-material table.parts thead th {
 	text-align: left;
 	font-weight: 300;
+	text-transform: uppercase;
 }
 
 div.object-material table.parts tfoot.effects td {
