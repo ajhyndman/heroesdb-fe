@@ -1003,11 +1003,17 @@
 					if (!(level in qualityType)) {
 						if ((property.key + 'QualityBase') in equip) {
 							equip[property.key] = equip[property.key + 'QualityBase'];
+							delete equip[property.key + 'EnhanceBase'];
 						}
 					}
 					else if (property.key in qualityType[level]) {
 						if (!((property.key + 'QualityBase') in equip)) {
-							equip[property.key + 'QualityBase'] = equip[property.key];
+							if ((property.key + 'EnhanceBase') in equip && equip[property.key + 'EnhanceBase'] < equip[property.key]) {
+								equip[property.key + 'QualityBase'] = equip[property.key + 'EnhanceBase'];
+							}
+							else {
+								equip[property.key + 'QualityBase'] = equip[property.key];
+							}
 						}
 						equip[property.key] = Math.floor(equip[property.key + 'QualityBase'] * (1 + qualityType[level][property.key]));
 						delete equip[property.key + 'EnhanceBase'];
