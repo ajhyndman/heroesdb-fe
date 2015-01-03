@@ -272,7 +272,7 @@
 					object.properties = [];
 					for (var i = 0; i < objectProperties.length; i++) {
 						var property = objectProperties[i];
-						if (property.base == true && rawObject[property.key] > 0) {
+						if (property.base == true && property.key in rawObject && rawObject[property.key] != 0) {
 							object[property.key] = rawObject[property.key];
 							object.properties.push(property);
 						}
@@ -1053,6 +1053,24 @@
 					equip.nameEnhanceBase = equip.name;
 				}
 				equip.name = '+' + level.level + ' ' + equip.nameEnhanceBase;
+				// TODO: fix this... add all level properties to equip
+				if ('speed' in level && !('speed' in equip)) {
+					var objectProperties = ObjectProperties.get();
+					var speedProperty = null;
+					for (var i = 0; i < objectProperties.length; i += 1) {
+						if (objectProperties[i].key == 'speed') {
+							aatkProperty = objectProperties[i];
+							break;
+						}
+					}
+					equip.speed = 0;
+					if (equip.properties[1].key == 'matk') {
+						equip.properties.splice(2, 0, aatkProperty);
+					}
+					else {
+						equip.properties.splice(1, 0, aatkProperty);
+					}
+				}
 				if ('aatk' in level && !('aatk' in equip)) {
 					var objectProperties = ObjectProperties.get();
 					var aatkProperty = null;
