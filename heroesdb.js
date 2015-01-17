@@ -67,7 +67,7 @@
 			controllerAs: 'card',
 		});
 		$httpProvider.interceptors.push('LoadingStatus');
-	};
+	}
 	app.config(config);
 
 
@@ -94,138 +94,590 @@
 
 	LoadingStatusService.$inject = ['$rootScope', '$q'];
 	function LoadingStatusService($rootScope, $q) {
+		var self = this;
+		self.request = request;
+		self.response = response;
+		self.responseError = responseError;
+
 		$rootScope.loading = false;
+
+		function request(config) {
+			activeRequests += 1;
+			$rootScope.loading = true;
+			return config || $q.when(config);
+		}
+
+		function response(response) {
+			activeRequests -= 1;
+			if (activeRequests == 0) {
+				$rootScope.loading = false;
+			}
+			return response || $q.when(response);
+		}
+
+		function responseError(rejection) {
+			activeRequests -= 1;
+			if (activeRequests == 0) {
+				$rootScope.loading = false;
+			}
+			return $q.reject(rejection);
+		}
+
 		var activeRequests = 0;
 		return {
-			request: function(config) {
-				activeRequests += 1;
-				$rootScope.loading = true;
-				return config || $q.when(config);
-			},
-			response: function(response) {
-				if ((activeRequests -= 1) == 0) {
-					$rootScope.loading = false;
-				}
-				return response || $q.when(response);
-			},
-			responseError: function(rejection) {
-				if ((activeRequests -= 1) == 0) {
-					$rootScope.loading = false;
-				}
-				return $q.reject(rejection);
-			}
+			request: self.request,
+			response: self.response,
+			responseError: self.responseError
 		}
-	};
+	}
 
-	CharactersService.$inject = ['$resource'];
-	function CharactersService($resource) {
+	CharactersService.$inject = ['$q', '$resource'];
+	function CharactersService($q, $resource) {
+		function Character(data, initial) {
+			var self = this;
+			self.id = data.id;
+			self.name = data.name;
+			self.initial = initial;
+			self.description = data.description;
+		}
+
 		var self = this;
+		self.resource = $resource('/data/characters.json');
+		self.defer = null;
 		self.characters = null;
-		self.initials = null;
-		self.get = function() {
-			if (self.characters == null) {
-				self.characters = $resource('/data/characters.json').query();
+		self.get = get;
+
+		function get() {
+			if (self.defer != null) {
+				return self.defer.promise;
 			}
-			return self.characters;
-		};
-		self.getInitials = function() {
-			if (self.initials == null) {
-				self.initials = {};
-				var characterInitialLength = {};
-				var initialCharacters = {};
-				var safety = 1;
-				for (var i = 0; i < self.characters.length; i += 1) {
-					if (safety++ > 1000) {
-						break;
-					}
-					var character = self.characters[i];
-					if (!(character.id in characterInitialLength)) {
-						characterInitialLength[character.id] = 1;
-					}
-					var initialLength = characterInitialLength[character.id];
-					var initial = character.name.substring(0, initialLength);
-					if (initial in initialCharacters) {
-						characterInitialLength[character.id] = initialLength + 1;
-						characterInitialLength[initialCharacters[initial]] = initialLength + 1;
-						initialCharacters = {};
-						i = -1;
-					}
-					else {
-						initialCharacters[initial] = character.id;
-					}
-				}
-				for (var initial in initialCharacters) {
-					self.initials[initialCharacters[initial]] = initial;
-				}
+			self.defer = $q.defer();
+			if (self.characters != null) {
+				self.defer.resolve(self.characters);
 			}
-			return self.initials;
-		};
-		return {
-			get: self.get,
-			getInitials: self.getInitials
-		};
-	};
+			else {
+				self.resource.query().$promise.then(function (characters) {
+					var characterInitials = {};
+					var characterInitialLength = {};
+					var initialCharacters = {};
+					for (var i = 0; i < characters.length; i += 1) {
+						var character = characters[i];
+						var initialLength = characterInitialLength[character.id] || 1;
+						var initial = character.name.substring(0, initialLength);
+						if (!(initial in initialCharacters)) {
+							characterInitials[character.id] = initial;
+							initialCharacters[initial] = character.id;
+						}
+						else {
+							characterInitialLength[character.id] = initialLength + 1;
+							characterInitialLength[initialCharacters[initial]] = initialLength + 1;
+							characterInitials = {};
+							initialCharacters = {};
+							i = -1;
+						}
+					}
+					self.characters = [];
+					characters.forEach(function (character) {
+						var initial = characterInitials[character.id];
+						self.characters.push(new Character(character, initial));
+					});
+					self.defer.resolve(self.characters);
+				});
+			}
+			return self.defer.promise;
+		}
+
+		return { get: self.get };
+	}
 
 	ClassificationService.$inject = ['$resource'];
 	function ClassificationService($resource) {
 		var self = this;
+		self.resource = $resource('/data/classification.json');
 		self.classification = null;
-		self.get = function() {
+		self.get = get;
+		
+		function get() {
 			if (self.classification == null) {
-				self.classification = $resource('/data/classification.json').get();
+				self.classification = self.resource.get();
 			}
 			return self.classification;
-		};
+		}
+
 		return { get: self.get };
-	};
+	}
 
 	ObjectListService.$inject = ['$resource'];
 	function ObjectListService($resource) {
 		var self = this;
+		self.resource = $resource('/data/objects/:key.json', { key: '@key' });
 		self.objectLists = {};
-		self.get = function(categoryKey, typeKey) {
+		self.get = get;
+
+		function get(categoryKey, typeKey) {
 			var key = categoryKey + '-' + typeKey;
 			if (!(key in self.objectLists)) {
-				self.objectLists[key] = $resource('/data/objects/:key.json', { key: '@key' }).query({ key: key });
+				self.objectLists[key] = self.resource.query({ key: key });
 			}
 			return self.objectLists[key];
-		};
+		}
+
 		return { get: self.get };
-	};
+	}
 
 	QualityTypeService.$inject = ['$resource'];
 	function QualityTypeService($resource) {
 		var self = this;
+		self.resource = $resource('/data/quality-types/:key.json', { key: '@key' });
 		self.qualityTypes = {};
-		self.get = function(key) {
+		self.get = get;
+
+		function get(key) {
 			if (!(key in self.qualityTypes)) {
-				self.qualityTypes[key] = $resource('/data/quality-types/:key.json', { key: '@key' }).get({ key: key });
+				self.qualityTypes[key] = self.resource.get({ key: key });
 			}
 			return self.qualityTypes[key];
-		};
+		}
+
 		return { get: self.get };
-	};
+	}
 
 	EnhanceTypeService.$inject = ['$resource'];
 	function EnhanceTypeService($resource) {
 		var self = this;
+		self.resource = $resource('/data/enhance-types/:key.json', { key: '@key' });
 		self.enhanceTypes = {};
-		self.get = function(key) {
+		self.get = get;
+
+		function get(key) {
 			if (!(key in self.enhanceTypes)) {
-				self.enhanceTypes[key] = $resource('/data/enhance-types/:key.json', { key: '@key' }).get({ key: key });
+				self.enhanceTypes[key] = self.resource.get({ key: key });
 			}
 			return self.enhanceTypes[key];
-		};
-		return { get: self.get };
-	};
+		}
 
-	ObjectService.$inject = ['$q', '$resource', 'ObjectProperties', 'Characters'];
-	function ObjectService($q, $resource, ObjectProperties, Characters) {
+		return { get: self.get };
+	}
+
+	ObjectService.$inject = ['$q', '$resource', 'ObjectProperties', 'Characters', 'QualityType', 'EnhanceType'];
+	function ObjectService($q, $resource, ObjectProperties, Characters, QualityType, EnhanceType) {
+		function Mat(data) {
+			var self = this;
+			self.key = data.key;
+			self.iconID = data.iconID;
+			self.name = data.name;
+			self.baseName = data.name;
+			self.classification = data.classification;
+			self.description = data.description;
+			self.rarity = data.rarity;
+		}
+
+		function Equip(data) {
+			Mat.apply(this, arguments);
+			var self = this;
+			self.defer = $q.defer();
+			self.properties = {};
+			self.propertyKeys = [];
+			self.basePropertyKeys = [];
+			self.updatePropertyKeys = updatePropertyKeys;
+			self.quality = 2;
+			self.qualityTypeKey = data.qualityTypeKey || null;
+			self.qualityType = null;
+			self.setQuality = setQuality;
+			self.enhance = null;
+			self.enhanceTypeKey = data.enhanceTypeKey || null;
+			self.enhanceType = null;
+			self.setEnhance = setEnhance;
+			self.set = data.set;
+			self.requiredSkills = data.requiredSkills;
+			self.requiredLevel = data.requiredLevel;
+			self.classRestriction = [];
+			self.recipes = data.recipes || null;
+			self.screenshots = data.screenshots || [];
+			self.loadScreenshot = loadScreenshot;
+
+			var promises = [];
+			ObjectProperties.get().forEach(function(property) {
+				var value = (property.key in data) ? data[property.key] : 0;
+				self.properties[property.key] = {
+					key: property.key,
+					shortName: property.shortName,
+					value: value,
+					baseValue: value
+				};
+				if (property.base == true && value > 0) {
+					self.propertyKeys.push(property.key);
+					self.basePropertyKeys.push(property.key);
+				}
+			});
+
+			var promise = Characters.get();
+			promises.push(promise);
+			promise.then(function(characters) {
+				characters.forEach(function(character) {
+					if ((data.classRestriction & character.id) == character.id) {
+						self.classRestriction.push(character.name);
+					}
+				});
+				if (self.classRestriction.length == characters.length) {
+					self.classRestriction = [];
+				}
+			});
+
+			if (self.enhanceTypeKey != null) {
+				var promise = EnhanceType.get(self.enhanceTypeKey).$promise;
+				promises.push(promise);
+				promise.then(function(enhanceType) {
+					self.enhanceType = enhanceType;
+				});
+			}
+
+			$q.all(promises).then(function() {
+				self.defer.resolve(self);
+			});
+
+			function updatePropertyKeys() {
+				self.propertyKeys = [];
+				ObjectProperties.get().forEach(function(property) {
+					if (property.base == true && self.properties[property.key].value > 0) {
+						self.propertyKeys.push(property.key);
+					}
+				});
+			}
+
+			function setQuality(level, internal) {
+				internal = internal == undefined ? false : internal;
+				var defer = $q.defer();
+				var qualityDefer = $q.defer();
+				ObjectProperties.get().forEach(function(property) {
+					var key = property.key;
+					self.properties[key].value = self.properties[key].baseValue;
+				});
+				if (level == 2) {
+					self.quality = level;
+					qualityDefer.resolve();
+				}
+				else {
+					QualityType.get(self.qualityTypeKey).$promise.then(function(qualityType) {
+						self.qualityType = qualityType;
+						ObjectProperties.get().forEach(function(property) {
+							var key = property.key;
+							if (key in self.qualityType[level]) {
+								self.properties[key].value = Math.floor(self.properties[key].value * (1 + self.qualityType[level][key]));
+							}
+						});
+						self.quality = level;
+						qualityDefer.resolve();
+					});
+				}
+				qualityDefer.promise.then(function() {
+					if (internal == true) {
+						defer.resolve();
+					}
+					else {
+						self.setEnhance(self.enhance, true).then(function() {
+							self.updatePropertyKeys();
+							defer.resolve();
+						});
+					}
+				});
+				return defer.promise;
+			}
+
+			function setEnhance(level, internal) {
+				internal = internal == undefined ? false : internal;
+				var defer = $q.defer();
+				var qualityDefer = $q.defer();
+				if (internal == true) {
+					qualityDefer.resolve();
+				}
+				else {
+					self.setQuality(self.quality, true).then(function() {
+						qualityDefer.resolve();
+					});
+				}
+				qualityDefer.promise.then(function() {
+					if (level == null) {
+						if (internal == false) {
+							self.updatePropertyKeys();
+						}
+						self.name = self.baseName;
+						self.enhance = level;
+						defer.resolve();
+					}
+					else {
+						EnhanceType.get(self.enhanceTypeKey).$promise.then(function(enhanceType) {
+							self.enhanceType = enhanceType;
+							ObjectProperties.get().forEach(function(property) {
+								var key = property.key;
+								if (key in self.enhanceType[level]) {
+									if (key == 'weight') {
+										self.properties[key].value = Math.floor(self.properties[key].value * (1 + self.enhanceType[level][key]));
+									}
+									else {
+										self.properties[key].value = Math.floor(self.properties[key].value + self.enhanceType[level][key]);
+									}
+								}
+							});
+							if (internal == false) {
+								self.updatePropertyKeys();
+							}
+							self.name = '+' + level + ' ' + self.baseName;
+							self.enhance = level;
+							defer.resolve();
+						});
+					}
+				});
+				return defer.promise;
+			}
+
+			function loadScreenshot(index) {
+				var defer = $q.defer();
+				var img = new Image();
+				img.src = '/data/screenshots/' + self.screenshots[index];
+				img.onload = function() {
+					defer.resolve(img.src);
+				};
+				return defer.promise;
+			}
+		}
+		Equip.prototype = Mat.prototype;
+		Equip.prototype.constructior = Equip;
+
+		function Set(data, Object) {
+			Equip.apply(this, arguments);
+			var self = this;
+			self.updateProperties = updateProperties;
+			self.updateRecipes = updateRecipes;
+			self.setQuality = setQuality;
+			self.setEnhance = setEnhance;
+			self.partsInitialized = false;
+			self.parts = [];
+			self.loadParts = loadParts;
+			self.enabledParts = [];
+			self.partIsEnabled = partIsEnabled;
+			self.togglePart = togglePart;
+			self.effects = data.effects;
+			self.activeEffectKey = activeEffectKey;
+
+			function updateProperties() {
+				var newValues = {};
+				self.parts.forEach(function (part) {
+					if (self.partIsEnabled(part.key) == true) {
+						ObjectProperties.get().forEach(function (property) {
+							var key = property.key;
+							newValues[key] = (newValues[key] || 0) + part.properties[key].value;
+						});
+					}
+				});
+				if (self.activeEffectKey() in self.effects) {
+					var effect = self.effects[self.activeEffectKey()];
+					for (var key in effect) {
+						newValues[key] = (newValues[key] || 0) + effect[key];
+					}
+				}
+				ObjectProperties.get().forEach(function (property) {
+					var key = property.key;
+					self.properties[key].value = newValues[key] || 0;
+				});
+				self.updatePropertyKeys();
+			}
+
+			function updateRecipes() {
+				var newNpcRecipe = { appearQuestNames: [], shops: [], mats: [] };
+				var newPcRecipe = { expertises: [], mats: [] };
+				var collectMats = function(recipeType) {
+					var newMats = [];
+					self.parts.forEach(function(part) {
+						if (part.recipes != null && recipeType in part.recipes && self.partIsEnabled(part.key) == true) {
+							part.recipes[recipeType].mats.forEach(function(mat) {
+								var matAdded = false;
+								for (var i = 0; i < newMats.length; i += 1) {
+									if (newMats[i].key == mat.key) {
+										matAdded = true;
+										newMats[i].count += mat.count;
+										break;
+									}
+								}
+								if (matAdded == false) {
+									newMats.push({
+										key: mat.key,
+										iconID: mat.iconID,
+										name: mat.name,
+										rarity: mat.rarity,
+										order: mat.order,
+										count: mat.count
+									});
+								}
+							});
+						}
+					});
+					newMats = newMats.sort(function(matA, matB) {
+						if (matA.order > matB.order) return 1;
+						if (matA.order < matB.order) return -1;
+						if (matA.rarity > matB.rarity) return -1;
+						if (matA.rarity < matB.rarity) return 1;
+						if (matA.name > matB.name) return 1;
+						if (matA.name < matB.name) return -1;
+						return 0;
+					});
+					return newMats;
+				};
+				self.parts.forEach(function (part) {
+					if (self.partIsEnabled(part.key) == true && part.recipes != null) {
+						if ('npc' in part.recipes) {
+							var recipe = part.recipes.npc;
+							recipe.appearQuestNames.forEach(function(appearQuestName) {
+								if (newNpcRecipe.appearQuestNames.indexOf(appearQuestName) == -1) {
+									newNpcRecipe.appearQuestNames.push(appearQuestName);
+								}
+							});
+							recipe.shops.forEach(function (shop) {
+								var shopAdded = false;
+								for (var i = 0; i < newNpcRecipe.shops.length; i += 1) {
+									if (newNpcRecipe.shops[i].name == shop.name) {
+										shopAdded = true;
+										break;
+									}
+								}
+								if (shopAdded == false) {
+									newNpcRecipe.shops.push({
+										key: shop.key,
+										name: shop.name
+									});
+								}
+							});
+							newNpcRecipe.mats = collectMats('npc');
+						}
+						if ('pc' in part.recipes) {
+							var recipe = part.recipes.pc;
+							recipe.expertises.forEach(function (expertise) {
+								var expertiseAdded = false;
+								for (var i = 0; i < newPcRecipe.expertises.length; i += 1) {
+									if (newPcRecipe.expertises[i].name == expertise.name) {
+										expertiseAdded = true;
+										if (newPcRecipe.expertises[i].experienceRequired < expertise.experienceRequired) {
+											newPcRecipe.expertises[i].experienceRequired = expertise.experienceRequired;
+										}
+										break;
+									}
+								}
+								if (expertiseAdded == false) {
+									newPcRecipe.expertises.push({
+										name: expertise.name,
+										experienceRequired: expertise.experienceRequired
+									});
+								}
+							});
+							newPcRecipe.mats = collectMats('pc');
+						}
+					}
+				});
+				if (newNpcRecipe.mats.length + newPcRecipe.mats.length == 0) {
+					self.recipes = null;
+				}
+				else {
+					self.recipes = {};
+					if (newNpcRecipe.mats.length > 0) {
+						self.recipes.npc = newNpcRecipe;
+					}
+					if (newPcRecipe.mats.length > 0) {
+						self.recipes.pc = newPcRecipe;
+					}
+				}
+			}
+
+			function setQuality(level, internal) {
+				var defer = $q.defer();
+				var promises = [];
+				self.parts.forEach(function(part) {
+					promises.push(part.setQuality(level, internal));
+				});
+				$q.all(promises).then(function() {
+					self.updateProperties();
+					self.quality = level;
+					defer.resolve();
+				});
+				return defer.promise;
+			}
+
+			function setEnhance(level, internal) {
+				var defer = $q.defer();
+				var promises = [];
+				self.parts.forEach(function(part) {
+					promises.push(part.setEnhance(level, internal));
+				});
+				$q.all(promises).then(function() {
+					self.updateProperties();
+					self.enhance = level;
+					defer.resolve();
+				});
+				return defer.promise;
+			}
+
+			function loadParts() {
+				var defer = $q.defer();
+				if (self.partsInitialized == true) {
+					defer.resolve(self.parts);
+				}
+				else {
+					var promises = [];
+					var partOrder = [];
+					data.parts.forEach(function(part) {
+						if (part.base == true) {
+							var promise = Object.get('equip', part.key);
+							promises.push(promise);
+							partOrder.push(part.key);
+							promise.then(function(equip) {
+								self.parts.push(equip);
+								self.enabledParts.push(equip.key);
+							});
+						}
+					});
+					$q.all(promises).then(function() {
+						self.parts = self.parts.sort(function(partA, partB) {
+							if (partOrder[partA.key] > partOrder[partB.key]) return 1;
+							if (partOrder[partA.key] < partOrder[partB.key]) return -1;
+							return 0;
+						});
+						self.partsInitialized = true;
+						self.updateRecipes();
+						defer.resolve(self.parts);
+					});
+				}
+				return defer.promise;
+			}
+
+			function partIsEnabled(key) {
+				return self.enabledParts.indexOf(key) >= 0;
+			}
+
+			function togglePart(key) {
+				var i = self.enabledParts.indexOf(key);
+				if (i == -1) {
+					self.enabledParts.push(key);
+				}
+				else {
+					self.enabledParts.splice(i, 1);
+				}
+				self.updateProperties();
+				self.updateRecipes();
+			}
+
+			function activeEffectKey() {
+				return self.enabledParts.length;
+			}
+		}
+		Set.prototype = Equip.prototype;
+		Set.prototype.constructior = Set;
+
 		var self = this;
 		self.objects = {};
-		self.get = function(type, key) {
+		self.resource = $resource('/data/objects/:type/:key.json', { type: '@type', key: '@key' });
+		self.get = get;
+
+		function get(type, key) {
 			var defer = $q.defer();
-			type = type + 's';
 			if (!(type in self.objects)) {
 				self.objects[type] = {}
 			}
@@ -233,83 +685,34 @@
 				defer.resolve(self.objects[type][key]);
 			}
 			else {
-				var query = $q.all([
-					$resource('/data/objects/:type/:key.json', { type: '@type', key: '@key' }).get({ type: type, key: key }).$promise,
-					Characters.get().$promise
-				]);
-				query.then(function(data) {
-					var defers = [];
-					var rawObject = data[0];
-					var characters = data[1];
-					var objectProperties = ObjectProperties.get();
-					var object = {};
-					object.key = rawObject.key;
-					object.iconID = rawObject.iconID;
-					object.name = rawObject.name;
-					object.classification = rawObject.classification;
-					object.description = rawObject.description;
-					object.rarity = rawObject.rarity;
-					if (rawObject.qualityTypeKey) {
-						object.qualityTypeKey = rawObject.qualityTypeKey;
+				self.resource.get({ type: type + 's', key: key }).$promise.then(function (data) {
+					var object = null;
+					if (type == 'mat') {
+						object = new Mat(data);
 					}
-					if (rawObject.enhanceTypeKey) {
-						object.enhanceTypeKey = rawObject.enhanceTypeKey;
+					else if (type == 'equip') {
+						object = new Equip(data);
 					}
-					if (rawObject.set) {
-						object.set = rawObject.set;
+					else if (type == 'set') {
+						object = new Set(data, self);
 					}
-					object.requiredSkills = rawObject.requiredSkills;
-					object.requiredLevel = rawObject.requiredLevel;
-					object.classRestriction = [];
-					characters.forEach(function(character) {
-						if ((rawObject.classRestriction & character.id) == character.id) {
-							object.classRestriction.push(character.name);
-						}
-					});
-					if (object.classRestriction.length == characters.length) {
-						object.classRestriction = [];
-					}
-					object.properties = [];
-					for (var i = 0; i < objectProperties.length; i++) {
-						var property = objectProperties[i];
-						if (property.base == true && property.key in rawObject && rawObject[property.key] != 0) {
-							object[property.key] = rawObject[property.key];
-							object.properties.push(property);
-						}
-					}
-					if (rawObject.recipes) {
-						object.recipes = rawObject.recipes;
-					}
-					if (rawObject.parts) {
-						object.parts = [];
-						for (var i = 0; i < rawObject.parts.length; i += 1) {
-							var part = rawObject.parts[i];
-							object.parts.push(part);
-							if (part.key != null) {
-								var partDefer = self.get('equip', part.key);
-								defers.push(partDefer);
-								partDefer.then(function (data) {
-									for (var i = 0; i < object.parts.length; i += 1) {
-										if (object.parts[i].key == data.key) {
-											object.parts[i] = data;
-											break;
-										}
-									}
-								});
-							}
-						}
-					}
-					object.effects = ('effects' in rawObject) ? rawObject.effects : null;
-					self.objects[type][key] = object;
-					$q.all(defers).then(function () {
+					var finalize = function() {
+						self.objects[type][key] = object;
 						defer.resolve(self.objects[type][key]);
-					});
+					};
+					if ('defer' in object) {
+						object.defer.promise.then(finalize);
+					}
+					else {
+						finalize();
+					}
 				});
 			}
 			return defer.promise;
-		};
+		}
+
 		return { get: self.get };
-	};
+	}
 
 	ObjectPropertiesService.$inject = [];
 	function ObjectPropertiesService() {
@@ -335,11 +738,14 @@
 			{ key: 'requiredLevel', name: 'Required Level', shortName: 'Level', base: false },
 			{ key: 'classRestriction', name: 'Character Restriction', shortName: 'Character', base: false }
 		];
-		self.get = function() {
+		self.get = get;
+		
+		function get() {
 			return self.objectProperties;
-		};
+		}
+
 		return { get: self.get };
-	};
+	}
 
 	ObjectHovercardService.$inject = ['$document', '$rootScope', '$compile', '$timeout', 'Object'];
 	function ObjectHovercardService($document, $rootScope, $compile, $timeout, Object) {
@@ -348,13 +754,16 @@
 		self.visible = false;
 		self.scope = $rootScope.$new(true);
 		self.scope.visible = false;
+		self.show = show;
+		self.update = update;
+		self.hide = hide;
 
 		var body = $document.find('body');
 		body.append('<div ng-include="\'/templates/object-hovercard.html\'"></div>');
 		var element = body[0].lastChild;
 		$compile(element)(self.scope);
 
-		var show = function(objectKeyType, style) {
+		function show(objectKeyType, style) {
 			self.objectKeyType = objectKeyType;
 			self.visible = true;
 			Object.get(objectKeyType.split('.')[1], objectKeyType.split('.')[0]).then(function(data) {
@@ -366,23 +775,23 @@
 					}, 1);
 				}
 			});
-		};
+		}
 
-		var update = function(style) {
+		function update(style) {
 			self.scope.style = style;
-		};
+		}
 
-		var hide = function() {
+		function hide() {
 			self.visible = false;
 			self.scope.visible = self.visible;
-		};
+		}
 
 		return {
 			show: show,
 			update: update,
 			hide: hide
 		};
-	};
+	}
 
 
 	function objectsTableMenuDirective() {
@@ -392,7 +801,7 @@
 			controller: 'ObjectsTableMenuController',
 			controllerAs: 'menu'
 		};
-	};
+	}
 
 	characterRestrictionDirective.$inject = ['Characters'];
 	function characterRestrictionDirective(Characters) {
@@ -403,14 +812,13 @@
 				scope.characters = [];
 				scope.enabledCharacters = true;
 				scope.ready = false;
-				Characters.get().$promise.then(function(characters) {
+				Characters.get().then(function(characters) {
 					var enabled = [];
 					var disabled = [];
-					var initials = Characters.getInitials();
 					var flags = Number(attrs.characters);
 					characters.forEach(function(character) {
 						var flag = Number(character.id);
-						var character = { initial: initials[character.id], name: character.name };
+						var character = { initial: character.initial, name: character.name };
 						if ((flags & flag) == flag) {
 							enabled.push(character);
 						}
@@ -432,7 +840,7 @@
 				});
 			}
 		};
-	};
+	}
 
 	objectHovercardDirective.$inject = ['$document', '$timeout', 'ObjectHovercard'];
 	function objectHovercardDirective($document, $timeout, ObjectHovercard) {
@@ -448,9 +856,6 @@
 						return { x: x, y: y };
 					};
 					var getPointerPosition = function(event) {
-						if (!event) {
-							return { x: 50, y: 50 };
-						}
 						var x = 0;
 						var y = 0;
 						if (event.pageX || event.pageY) {
@@ -504,7 +909,7 @@
 				});
 			}
 		};
-	};
+	}
 
 	enhanceSelectorDirective.$inject = ['$timeout'];
 	function enhanceSelectorDirective($timeout) {
@@ -517,34 +922,28 @@
 						event.dataTransfer.effectAllowed = 'move';
 						event.dataTransfer.setData('text', '');
 						scope.$apply(function() {
-							scope.card.enhanceSelectorData.position = event.target.className.indexOf('end') >= 0 ? 'end' : 'start';
+							scope.card.enhance.selector.position = event.target.className.indexOf('end') >= 0 ? 'end' : 'start';
 						});
 					}
 				});
 				element.bind("dragenter", function(event) {
 					if ('dataset' in event.target && 'level' in event.target.dataset) {
-						$timeout.cancel(scope.card.enhanceSelectorData.delayedUpade);
+						$timeout.cancel(scope.card.enhance.selector.delayedUpade);
 						var targetLevel = parseInt(event.target.dataset.level);
-						if (scope.card.enhanceSelectorData.position == 'start') {
-							if (scope.card.enhanceStart != targetLevel) {
+						if (scope.card.enhance.selector.position == 'start') {
+							if (scope.card.enhance.start != targetLevel) {
 								scope.$apply(function() {
-									scope.card.enhanceSelectorData.target = targetLevel;
-									scope.card.enhanceSelectorData.delayedUpade = $timeout(function() {
-										if (scope.card.enhanceSelectorData.target == targetLevel) {
-											scope.card.setEnhanceStart(targetLevel);
-										}
+									scope.card.enhance.selector.delayedUpade = $timeout(function() {
+										scope.card.setEnhanceStart(targetLevel);
 									}, 25);
 								});
 							}
 						}
 						else {
-							if (scope.card.enhanceEnd != targetLevel) {
+							if (scope.card.enhance.end != targetLevel) {
 								scope.$apply(function() {
-									scope.card.enhanceSelectorData.target = targetLevel;
-									scope.card.enhanceSelectorData.delayedUpade = $timeout(function() {
-										if (scope.card.enhanceSelectorData.target == targetLevel) {
-											scope.card.setEnhanceEnd(targetLevel);
-										}
+									scope.card.enhance.selector.delayedUpade = $timeout(function() {
+										scope.card.setEnhanceEnd(targetLevel);
 									}, 25);
 								});
 							}
@@ -557,29 +956,202 @@
 				element.bind("drop", function(event) {
 					event.preventDefault();
 				});
-			},
-			controller: function() {
-				var self = this;
-				self.dragFrom = 'asd';
-				self.r = Math.random();
 			}
 		}
-	};
-
+	}
 
 
 	function ItemsController() {
-	};
+	}
 
 	ObjectsTableMenuController.$inject = ['Classification'];
 	function ObjectsTableMenuController(Classification) {
 		var self = this;
 		self.classification = Classification.get();
-	};
+	}
 
 	ObjectsTableController.$inject = ['$scope', '$stateParams', '$location', '$q', 'ObjectProperties', 'Characters', 'classification', 'objectList'];
 	function ObjectsTableController($scope, $stateParams, $location, $q, ObjectProperties, Characters, classification, objectList) {
+		function Column(data, table) {
+			function ColumnOption(key, name, column) {
+				var self = this;
+				self.key = key;
+				self.name = name;
+				self.column = column;
+				self.enabled = false;
+				self.test = null;
+				self.toggle = toggle;
+
+				var search = $location.search();
+				if (self.column.key in search) {
+					var enabledOptions = search[self.column.key].split(',');
+					if (enabledOptions.indexOf(self.key) >= 0) {
+						self.enabled = true;
+					}
+				}
+
+				function toggle() {
+					self.enabled = !this.enabled;
+					self.column.saveMenu();
+					self.column.table.filter(true);
+				}
+			}
+
+			function ColumnBetweenOption(key, name, column, from, till) {
+				ColumnOption.apply(this, arguments);
+				var self = this;
+				self.from = from;
+				self.till = till;
+				self.test = test;
+				
+				function test(value) {
+					return value >= from && value < till;
+				}
+			}
+			ColumnBetweenOption.prototype = ColumnOption.prototype;
+			ColumnBetweenOption.prototype.constructior = ColumnBetweenOption;
+
+			function ColumnFlagOption(key, name, column, flag) {
+				ColumnOption.apply(this, arguments);
+				var self = this;
+				self.flag = flag;
+				self.test = test;
+				
+				function test(value) {
+					return (value & self.flag) == self.flag;
+				}
+			}
+			ColumnFlagOption.prototype = ColumnOption.prototype;
+			ColumnFlagOption.prototype.constructior = ColumnFlagOption;
+
+			var self = this;
+			self.defer = $q.defer();
+			self.key = data.key;
+			self.name = data.name;
+			self.shortName = data.shortName;
+			self.table = table;
+			self.optionsInitialized = false;
+			self.optionEnabled = false;
+			self.options = [];
+			self.menuOpen = false;
+			self.buildMenu = buildMenu;
+			self.showMenu = showMenu;
+			self.hideMenu = hideMenu;
+			self.saveMenu = saveMenu;
+
+			var search = $location.search();
+			if (self.key in search) {
+				self.buildMenu().then(function() {
+					self.defer.resolve(self);
+				});
+			}
+			else {
+				self.defer.resolve(self);
+			}
+
+			function showMenu(column) {
+				if (self.optionsInitialized) {
+					self.menuOpen = true;
+				}
+				else {
+					self.buildMenu().then(function() {
+						self.optionsInitialized = true;
+						self.menuOpen = true;
+					});
+				}
+			}
+
+			function hideMenu() {
+				self.menuOpen = false;
+			}
+
+			function buildMenu() {
+				var defer = $q.defer();
+				self.options = [];
+				var min = null;
+				var max = null;
+				var sum = 0;
+				var count = 0;
+				self.table.objectList.forEach(function(object) {
+					if (self.key in object) {
+						var value = object[self.key];
+						if (max == null || max < value) {
+							max = value;
+						}
+						if (min == null || min > value) {
+							min = value;
+						}
+						count += 1;
+						sum += value;
+					}
+				});
+				var avg = Math.round(sum / count);
+
+				if (self.key == 'requiredLevel') {
+					for (var level = max; level >= 60; level -= 10) {
+						var from = level - level % 10;
+						var till = from + 10;
+						var name = String(level)[0] + 'X';
+						var key = name.toLowerCase();
+						var option = new ColumnBetweenOption(key, name, self, from, till);
+						self.options.push(option);
+					}
+					var option = new ColumnBetweenOption('low', 'Low-level', self, 0, 60);
+					self.options.push(option);
+					defer.resolve(self);
+				}
+				else if (self.key == 'classRestriction') {
+					Characters.get().then(function(characters) {
+						characters.forEach(function (character) {
+							var option = new ColumnFlagOption(character.name.toLowerCase(), character.name, self, character.id);
+							self.options.push(option);
+						});
+						defer.resolve(self);
+					});
+				}
+				else if (min != 0 || max != 0) {
+					var high = Math.round(max - ((max - avg) / 2));
+					var low = Math.round(min + ((avg - min) / 2));
+					var name = 'High (' + max + ' - ' + high + ')';
+					var option = new ColumnBetweenOption('high', name, self, high, max + 1);
+					self.options.push(option);
+					if (high - 1 >= low) {
+						var name = 'Average (' + (high - 1) + ' - ' + low + ')';
+						var option = new ColumnBetweenOption('average', name, self, low, high);
+						self.options.push(option);
+					}
+					if (low - 1 >= min) {
+						var name = 'Low (' + (low - 1) + ' - ' + min + ')';
+						var option = new ColumnBetweenOption('low', name, self, min, low);
+						self.options.push(option);
+					}
+					defer.resolve(self);
+				}
+				else {
+					defer.resolve(null);
+				}
+
+				return defer.promise;
+			}
+
+			function saveMenu() {
+				var filter = null;
+				self.options.forEach(function(option) {
+					if (option.enabled == true) {
+						if (filter == null) {
+							filter = option.key;
+						}
+						else {
+							filter += ',' + option.key;
+						}
+					}
+				});
+				$location.search(self.key, filter);
+			}
+		}
+
 		var self = this;
+		self.initialized = false;
 		self.classification = classification;
 		self.objectProperties = ObjectProperties.get();
 		self.columns = [];
@@ -588,14 +1160,19 @@
 		self.lastObjectIndex = 0;
 		self.objectsToShow = 25;
 		self.filter = filter;
+		self.order = order;
 		self.selectedObjectKey = null;
 		self.selectObject = selectObject;
 		self.orderColumnKey = null;
 		self.orderReverse = false;
-		self.order = order;
-		self.showColumnMenu = showColumnMenu;
-		self.hideColumnMenu = hideColumnMenu;
 
+		objectList.forEach(function(object) {
+			if ($stateParams.categoryKey == null || object.categoryKeys.indexOf($stateParams.categoryKey) >= 0) {
+				self.objectList.push(object);
+			}
+		});
+
+		var columnPromises = [];
 		var findWithKey = function(objects, key) {
 			for (var i = 0; i < objects.length; i += 1) {
 				if (objects[i].key == key) {
@@ -607,16 +1184,21 @@
 		var type = findWithKey(group.types, $stateParams.typeKey);
 		type.primaryProperties.forEach(function(property) {
 			var property = findWithKey(self.objectProperties, property);
-			delete property.options;
-			self.columns.push(property);
+			var column = new Column(property, self);
+			columnPromises.push(column.defer.promise);
+			self.columns.push(column);
 		});
 
-		for (var i = 0; i < objectList.length; i += 1) {
-			var object = objectList[i];
-			if ($stateParams.categoryKey == null || object.categoryKeys.indexOf($stateParams.categoryKey) >= 0) {
-				self.objectList.push(object);
-			}
+		var search = $location.search();
+		if ('order' in search) {
+			self.orderColumnKey = search.order.split('.')[0];
+			self.orderReverse = search.order.split('.')[1] == 'asc' ? true : false;
+			self.order();
 		}
+		$q.all(columnPromises).then(function() {
+			self.filter(true);
+			self.initialized = true;
+		});
 
 		var content = document.getElementById('content');
 		angular.element(content).bind('scroll', function() {
@@ -630,71 +1212,40 @@
 			}
 		});
 
-		var filterDefers = [];
-		var search = $location.search();
-		for (var ci = 0; ci < self.columns.length; ci += 1) {
-			var column = self.columns[ci];
-			if (column.key in search) {
-				filterDefers.push(buildColumnMenu(column));
-			}
-		}
-		$q.all(filterDefers).then(function(columns) {
-			for (var i = 0; i < columns.length; i += 1) {
-				var column = columns[i];
-				var enabledOptions = search[column.key].split(',');
-				for (var oi = 0; oi < column.options.length; oi += 1) {
-					var option = column.options[oi];
-					if (enabledOptions.indexOf(option.key) >= 0) {
-						option.enabled = true;
-					}
-				}
-			}
-			if ('order' in search) {
-				self.orderColumnKey = search.order.split('.')[0];
-				self.orderReverse = search.order.split('.')[1] == 'asc' ? true : false;
-				self.order();
-			}
-			self.filter(true);
-		});
-
 		function selectObject(key) {
 			self.selectedObjectKey = self.selectedObjectKey == key ? null : key;
-		};
+		}
 
 		function filter(restart) {
 			if (restart) {
 				self.objects = [];
-				self.lastObjectIndex = -1;
+				self.lastObjectIndex = 0;
 				self.objectsToShow = 25;
 			}
-			for (self.lastObjectIndex += 1; self.lastObjectIndex < self.objectList.length && self.objects.length < self.objectsToShow; self.lastObjectIndex += 1) {
+			for (self.lastObjectIndex; self.lastObjectIndex < self.objectList.length && self.objects.length < self.objectsToShow; self.lastObjectIndex += 1) {
 				var object = self.objectList[self.lastObjectIndex];
 				var objectFiltered = true;
-				for (var ci = 0; ci < self.columns.length; ci += 1) {
-					var column = self.columns[ci];
+				self.columns.forEach(function(column) {
 					column.optionEnabled = false;
 					var columnFiltered = false;
-					if ('options' in column) {
-						for (var oi = 0; oi < column.options.length; oi += 1) {
-							var option = column.options[oi];
-							if (option.enabled == true) {
-								column.optionEnabled = true;
-								columnFiltered |= option.test(object[column.key]);
-							}
+					column.options.forEach(function(option) {
+						if (option.enabled == true) {
+							column.optionEnabled = true;
+							columnFiltered |= option.test(object[column.key]);
 						}
-					}
+					});
 					objectFiltered &= !column.optionEnabled || columnFiltered;
-				}
+				});
 				if (objectFiltered) {
 					self.objects.push(object);
 				}
 			}
-		};
+		}
 
 		function order(columnKey) {
 			if (columnKey != undefined) {
 				if (self.orderColumnKey == columnKey) {
-					self.orderReverse = self.orderReverse ? false : true;
+					self.orderReverse = !self.orderReverse;
 				}
 				else {
 					self.orderReverse = false;
@@ -718,662 +1269,244 @@
 			if (columnKey != undefined) {
 				self.filter(true);
 			}
-		};
+		}
+	}
 
-		function buildColumnMenu(column) {
-			var defer = $q.defer();
-			column.options = [];
-			var min = null;
-			var max = null;
-			var sum = 0;
-			var count = 0;
-			for (var i = 0; i < self.objectList.length; i += 1) {
-				var object = self.objectList[i];
-				if (column.key in object) {
-					var value = object[column.key];
-					if (max == null || max < value) {
-						max = value;
-					}
-					if (min == null || min > value) {
-						min = value;
-					}
-					count += 1;
-					sum += value;
-				}
-			}
-			var avg = Math.round(sum / count);
-
-			var saveOptions = function() {
-				var filter = '';
-				for (var ci = 0; ci < self.columns.length; ci += 1) {
-					var column = self.columns[ci];
-					if ('options' in column) {
-						var filter = '';
-						for (var oi = 0; oi < column.options.length; oi += 1) {
-							var option = column.options[oi];
-							if (option.enabled == true) {
-								filter += (filter.length == 0 ? '' : ',');
-								filter += option.key;
-							}
-						}
-						if (filter.length > 0) {
-							$location.search(column.key, filter);
-						}
-						else {
-							$location.search(column.key, null);
-						}
-					}
-				}
-			};
-
-			var createOption = function(key, name, from, till) {
-				return {
-					key: key,
-					name: name,
-					enabled: false,
-					test: function(value) { return value >= from && value < till; },
-					toggle: function() {
-						this.enabled = !this.enabled;
-						saveOptions();
-						self.filter(true);
-					}
-				}
-			};
-
-			var createCharacterOption = function(key, name, id) {
-				return {
-					key: key,
-					name: name,
-					enabled: false,
-					test: function(value) { return (value & id) == id; },
-					toggle: function() {
-						this.enabled = !this.enabled;
-						saveOptions();
-						self.filter(true);
-					}
-				}
-			};
-
-			if (column.key == 'requiredLevel') {
-				for (var level = max; level >= 60; level -= 10) {
-					var from = level - level % 10;
-					var till = from + 10;
-					var name = String(level)[0] + 'X';
-					var key = name.toLowerCase();
-					column.options.push(createOption(key, name, from, till));
-				}
-				column.options.push(createOption('low', 'Low-level', 0, 60));
-				defer.resolve(column);
-			}
-
-			else if (column.key == 'classRestriction') {
-				Characters.get().$promise.then(function(characters) {
-					for (var i = 0; i < characters.length; i += 1) {
-						var character = characters[i];
-						column.options.push(createCharacterOption(character.name.toLowerCase(), character.name, character.id));
-					}
-					defer.resolve(column);
-				});
-			}
-
-			else {
-				var high = Math.round(max - ((max - avg) / 2));
-				var low = Math.round(min + ((avg - min) / 2));
-				if (max > 0) {
-					var name = 'High (' + max + ' - ' + high + ')';
-					column.options.push(createOption('high', name, high, max + 1));
-				}
-				if (high > 0) {
-					var name = 'Average (' + (high - 1) + ' - ' + low + ')';
-					column.options.push(createOption('average', name, low, high));
-				}
-				if (low > 0) {
-					var name = 'Low (' + (low - 1) + ' - ' + min + ')';
-					column.options.push(createOption('low', name, min, low));
-				}
-				defer.resolve(column);
-			}
-			return defer.promise;
-		};
-
-		function hideColumnMenu() {
-			for (var i = 0; i < self.columns.length; i += 1) {
-				if (self.columns[i].menuOpen) {
-					self.columns[i].menuOpen = false;
-				}
-			}
-		};
-
-		function showColumnMenu(column) {
-			if ('options' in column) {
-				column.menuOpen = true;
-			}
-			else {
-				buildColumnMenu(column).then(function() {
-					column.menuOpen = true;
-				});
-			}
-		};
-	};
-
-	ObjectCardController.$inject = ['$state', '$stateParams', '$scope', '$q', 'Object', 'ObjectProperties', 'QualityType', 'EnhanceType'];
-	function ObjectCardController($state, $stateParams, $scope, $q, Object, ObjectProperties, QualityType, EnhanceType) {
+	ObjectCardController.$inject = ['$state', '$stateParams', '$scope', '$q', '$timeout', 'Object', 'ObjectProperties'];
+	function ObjectCardController($state, $stateParams, $scope, $q, $timeout, Object, ObjectProperties) {
 		var self = this;
+		self.object = null;
 		self.visible = false;
 		self.hide = hide;
-		self.setSetPartColumns = setSetPartColumns;
-		self.resetQuality = resetQuality;
-		self.setEquipQuality = setEquipQuality;
-		self.setQuality = setQuality;
-		self.enhanceSelectorData = {};
-		self.enhance = {};
-		self.enhanceStart = null;
-		self.enhanceEnd = null;
-		self.setEnhanceStats = setEnhanceStats;
+		self.setPartColumns = [];
+		self.enhance = {
+			start: null,
+			end: null,
+			mats: {},
+			properties: [],
+			selector: {}
+		};
+		self.screenshot = {
+			expanded: false,
+			action: 'none',
+			currIndex: 0,
+			currSrc: null,
+			prev: null,
+			curr: null,
+			next: null,
+			lock: false,
+			defer: null
+		};
 		self.setEnhanceInfo = setEnhanceInfo;
-		self.resetEnhance = resetEnhance;
 		self.setEnhanceStart = setEnhanceStart;
 		self.setEnhanceEnd = setEnhanceEnd;
-		self.updateSetProperties = updateSetProperties;
-		self.updateSetRecipe = updateSetRecipe;
-		self.selectedSetParts = [];
-		self.toggleSetPart = toggleSetPart;
-		self.setPartIsSelected = setPartIsSelected;
-		self.activeSetEffectKey = activeSetEffectKey;
+		self.openScreenshot = openScreenshot;
 
-		Object.get($stateParams.objectType, $stateParams.objectKey).then(function(data) {
-			$scope.object = data;
-			self.resetQuality();
-			self.resetEnhance();
-			if (!('quality' in $scope.object) && 'qualityTypeKey' in $scope.object) {
-				$scope.object.quality = 2;
-			}
-			else if ('parts' in $scope.object) {
-				for (var i = 0; i < $scope.object.parts.length; i += 1) {
-					if ('qualityTypeKey' in $scope.object.parts[i]) {
-						$scope.object.quality = 2;
-						break;
-					}
-				}
-			}
-			if ('parts' in $scope.object) {
-				for (var i = 0; i < $scope.object.parts.length; i += 1) {
-					var equip = $scope.object.parts[i];
-					self.selectedSetParts.push(equip.key);
-				}
-				self.setSetPartColumns();
-				self.updateSetRecipe();
-			}
-			if (!('enhanceTypeKey' in $scope.object)) {
-				self.visible = true;
+		Object.get($stateParams.objectType, $stateParams.objectKey).then(function(object) {
+			self.object = object;
+			$scope.object = self.object;
+			var promises = [];
+			var partsDefer = $q.defer();
+			promises.push(partsDefer.promise);
+			if (!('parts' in self.object) || self.object.partsInitialized == true) {
+				partsDefer.resolve();
 			}
 			else {
-				EnhanceType.get($scope.object.enhanceTypeKey).$promise.then(function(enhanceType) {
-					enhanceType.levels = [];
-					for (var level = 1; level <= 15; level += 1) {
-						if (level in enhanceType) {
-							switch (enhanceType[level].risk) {
-								case 'none':
-									enhanceType[level].riskText = 'no penalty'
-									break;
-								case 'downgrade':
-									enhanceType[level].riskText = 'downgrade enhancement by 1'
-									break;
-								case 'reset':
-									enhanceType[level].riskText = 'reset enhancement'
-									break;
-								case 'break':
-									enhanceType[level].riskText = 'break item'
-									break;
-							}
-							enhanceType[level].level = level;
-							enhanceType.levels.push(enhanceType[level]);
-						}
-					}
-					$scope.object.enhanceType = enhanceType;
-					self.visible = true;
+				self.object.loadParts().then(function() {
+					partsDefer.resolve();
 				});
 			}
+			partsDefer.promise.then(function() {
+				if ('parts' in self.object) {
+					self.object.parts.forEach(function(part) {
+						if (!self.object.partIsEnabled(part.key)) {
+							self.object.togglePart(part.key);
+						}
+					});
+					var columns = [];
+					var defaultColumns = [ 'def', 'str', 'int', 'dex', 'will', 'hp' ];
+					var effectColumns = [];
+					for (var effectKey in self.object.effects) {
+						var effect = self.object.effects[effectKey];
+						for (var propertyKey in effect) {
+							if (effectColumns.indexOf(propertyKey) == -1) {
+								effectColumns.push(propertyKey);
+							}
+						}
+					}
+					defaultColumns.forEach(function(defaultColumn) {
+						if (effectColumns.indexOf(defaultColumn) >= 0) {
+							columns.push(defaultColumn);
+						}
+					});
+					effectColumns.forEach(function(effectColumn) {
+						if (columns.indexOf(effectColumn) == -1) {
+							columns.push(effectColumn);
+						}
+					});
+					for (var i = 0; i < defaultColumns.length && columns.length < 6; i += 1) {
+						var defaultColumn = defaultColumns[i];
+						if (columns.indexOf(defaultColumn) == -1 && self.object.properties[defaultColumn].baseValue > 0) {
+							columns.push(defaultColumn);
+						}
+					}
+					ObjectProperties.get().forEach(function(property) {
+						if (columns.indexOf(property.key) >= 0) {
+							self.setPartColumns.push(property);
+						}
+					});
+				}
+				self.object.setQuality(2, true);
+				self.object.setEnhance(null, true);
+			});
+			var screenshotDefer = $q.defer();
+			promises.push(screenshotDefer.promise);
+			if (!('screenshots' in self.object && self.object.screenshots.length > 0)) {
+				screenshotDefer.resolve();
+			}
+			else {
+				self.object.loadScreenshot(0).then(function(src) {
+					self.screenshot.currSrc = src;
+					self.screenshot.prev = src;
+					self.screenshot.curr = src;
+					self.screenshot.next = src;
+					screenshotDefer.resolve();
+				});
+			}
+			$q.all(promises).then(function() {
+				self.visible = true;
+			});
 		});
 
 		function hide() {
 			self.visible = false;
 			$state.go('^');
-		};
-
-		function setSetPartColumns() {
-			var columns = [];
-			var defaultColumns = [ 'def', 'str', 'int', 'dex', 'will', 'hp' ];
-			var effectColumns = [];
-			for (var effectKey in $scope.object.effects) {
-				var effect = $scope.object.effects[effectKey];
-				for (var propertyKey in effect) {
-					if (effectColumns.indexOf(propertyKey) == -1) {
-						effectColumns.push(propertyKey);
-					}
-				}
-			}
-			for (var i = 0; i < defaultColumns.length; i += 1) {
-				if (effectColumns.indexOf(defaultColumns[i]) >= 0) {
-					columns.push(defaultColumns[i]);
-				}
-			}
-			for (var i = 0; i < effectColumns.length; i += 1) {
-				if (columns.indexOf(effectColumns[i]) == -1) {
-					columns.push(effectColumns[i]);
-				}
-			}
-			for (var i = 0; i < defaultColumns.length && columns.length < 6; i += 1) {
-				if (columns.indexOf(defaultColumns[i]) == -1 && (defaultColumns[i] in $scope.object)) {
-					columns.push(defaultColumns[i]);
-				}
-			}
-			$scope.columns = [];
-			for (var ci = 0; ci < columns.length; ci += 1) {
-				var column = columns[ci];
-				for (var pi = 0; pi < $scope.object.properties.length; pi += 1) {
-					var property = $scope.object.properties[pi];
-					if (property.key == column) {
-						$scope.columns.push(property);
-						break;
-					}
-				}
-			}
-		};
-
-		function resetQuality() {
-			if ('quality' in $scope.object && $scope.object.quality != 2) {
-				self.setQuality(2);
-			}
-			if ('parts' in $scope.object) {
-				for (var i = 0; i < $scope.object.parts.length; i += 1) {
-					var equip = $scope.object.parts[i];
-					if ('quality' in equip && equip.quality != 2) {
-						self.setEquipQuality(equip, 2);
-					}
-				}
-			}
-		}
-
-		function setEquipQuality(equip, level) {
-			var defer = QualityType.get(equip.qualityTypeKey).$promise;
-			defer.then(function (qualityType) {
-				for (var i = 0; i < equip.properties.length; i += 1) {
-					var property = equip.properties[i];
-					if (!(level in qualityType)) {
-						if ((property.key + 'QualityBase') in equip) {
-							equip[property.key] = equip[property.key + 'QualityBase'];
-							delete equip[property.key + 'EnhanceBase'];
-						}
-					}
-					else if (property.key in qualityType[level]) {
-						if (!((property.key + 'QualityBase') in equip)) {
-							if ((property.key + 'EnhanceBase') in equip && equip[property.key + 'EnhanceBase'] < equip[property.key]) {
-								equip[property.key + 'QualityBase'] = equip[property.key + 'EnhanceBase'];
-							}
-							else {
-								equip[property.key + 'QualityBase'] = equip[property.key];
-							}
-						}
-						equip[property.key] = Math.floor(equip[property.key + 'QualityBase'] * (1 + qualityType[level][property.key]));
-						delete equip[property.key + 'EnhanceBase'];
-					}
-				}
-				equip.quality = level;
-			});
-			return defer;
-		}
-
-		function setQuality(level) {
-			if ('qualityTypeKey' in $scope.object) {
-				this.setEquipQuality($scope.object, level).then(function() {
-					setEnhanceStats();
-				});
-			}
-			else if ('parts' in $scope.object) {
-				var defers = [];
-				for (var i = 0; i < $scope.object.parts.length; i += 1) {
-					var equip = $scope.object.parts[i];
-					if ('qualityTypeKey' in equip) {
-						defers.push(this.setEquipQuality(equip, level));
-						$scope.object.quality = level;
-					}
-				}
-				$q.all(defers).then(function() {
-					self.updateSetProperties();
-				});
-			}
-		}
-
-		function setEnhanceStats() {
-			var equip = $scope.object;
-			if ('enhance' in equip) {
-				var level = equip.enhanceType[self.enhanceEnd];
-				if (!('nameEnhanceBase' in equip)) {
-					equip.nameEnhanceBase = equip.name;
-				}
-				equip.name = '+' + level.level + ' ' + equip.nameEnhanceBase;
-				// TODO: fix this... add all level properties to equip
-				if ('speed' in level && !('speed' in equip)) {
-					var objectProperties = ObjectProperties.get();
-					var speedProperty = null;
-					for (var i = 0; i < objectProperties.length; i += 1) {
-						if (objectProperties[i].key == 'speed') {
-							aatkProperty = objectProperties[i];
-							break;
-						}
-					}
-					equip.speed = 0;
-					if (equip.properties[1].key == 'matk') {
-						equip.properties.splice(2, 0, aatkProperty);
-					}
-					else {
-						equip.properties.splice(1, 0, aatkProperty);
-					}
-				}
-				if ('aatk' in level && !('aatk' in equip)) {
-					var objectProperties = ObjectProperties.get();
-					var aatkProperty = null;
-					for (var i = 0; i < objectProperties.length; i += 1) {
-						if (objectProperties[i].key == 'aatk') {
-							aatkProperty = objectProperties[i];
-							break;
-						}
-					}
-					equip.aatk = 0;
-					if (equip.properties[1].key == 'matk') {
-						equip.properties.splice(2, 0, aatkProperty);
-					}
-					else {
-						equip.properties.splice(1, 0, aatkProperty);
-					}
-				}
-				for (var i = 0; i < equip.properties.length; i += 1) {
-					var property = equip.properties[i];
-					if (property.key in level) {
-						if (!((property.key + 'EnhanceBase') in equip)) {
-							equip[property.key + 'EnhanceBase'] = equip[property.key];
-						}
-						if (property.key == 'weight') {
-							equip[property.key] = Math.floor(equip[property.key + 'EnhanceBase'] * (1 + level[property.key]));
-						}
-						else {
-							equip[property.key] = Math.floor(equip[property.key + 'EnhanceBase'] + level[property.key]);
-						}
-					}
-					else {
-						if ((property.key + 'EnhanceBase') in equip) {
-							equip[property.key] = equip[property.key + 'EnhanceBase'];
-						}
-					}
-				}
-			}
 		}
 
 		function setEnhanceInfo() {
-			var enhanceType = $scope.object.enhanceType;
 			var probability = 0.9;
-			self.enhance.start = self.enhanceStart;
-			self.enhance.end = self.enhanceEnd;
-			self.enhance.mats = { array: [] };
 			var chance = 1.0;
-			for (var i = self.enhanceStart; i <= self.enhanceEnd; i += 1) {
+			var enhanceType = self.object.enhanceType;
+			self.enhance.mats = {};
+			self.enhance.matKeys = [];
+			for (var i = self.enhance.start; i <= self.enhance.end; i += 1) {
 				chance *= enhanceType[i].chance;
-				for (var mat in enhanceType[i].mats) {
-					if (enhanceType[i].mats[mat] > 0) {
-						if (!(mat in self.enhance.mats)) {
-							enhanceType.mats[mat].key = mat;
-							self.enhance.mats.array.push(enhanceType.mats[mat]);
-							self.enhance.mats[mat] = enhanceType.mats[mat];
-							self.enhance.mats[mat].count = 0;
+				for (var key in enhanceType[i].mats) {
+					if (enhanceType[i].mats[key] > 0) {
+						var mat = enhanceType.mats[key];
+						if (!(key in self.enhance.mats)) {
+							self.enhance.mats[key] = {
+								key: key,
+								iconID: mat.iconID,
+								name: mat.name,
+								rarity: mat.rarity,
+								order: mat.order,
+								count: 0
+							};
 						}
-						self.enhance.mats[mat].count += enhanceType[i].mats[mat];
+						self.enhance.mats[key].count += enhanceType[i].mats[key];
 					}
 				}
 			}
 			self.enhance.properties = [];
-			for (var i = 0; i < $scope.object.properties.length; i += 1) {
-				var property = $scope.object.properties[i];
-				if (property.key in enhanceType[self.enhanceEnd]) {
-					self.enhance.properties.push(property);
+			ObjectProperties.get().forEach(function(property) {
+				var property = self.object.properties[property.key];
+				if (property.key in enhanceType[self.enhance.end]) {
+					var value = null;
 					if (property.key == 'weight') {
-						self.enhance[property.key] = Math.floor($scope.object[property.key + 'EnhanceBase'] * enhanceType[self.enhanceEnd][property.key]);
+						value = Math.floor(property.baseValue * enhanceType[self.enhance.end][property.key]);
 					}
 					else {
-						self.enhance[property.key] = enhanceType[self.enhanceEnd][property.key];
-						if (self.enhanceStart > 1 && property.key in enhanceType[self.enhanceStart - 1]) {
-							self.enhance[property.key] -= enhanceType[self.enhanceStart - 1][property.key];
+						value = enhanceType[self.enhance.end][property.key];
+						if (self.enhance.start > 1 && property.key in enhanceType[self.enhance.start - 1]) {
+							value -= enhanceType[self.enhance.start - 1][property.key];
 						}
 					}
+					self.enhance.properties.push({
+						key: property.key,
+						shortName: property.shortName,
+						value: value
+					});
 				}
-			}
+			});
 			self.enhance.chance = Math.round(chance * 10000) / 100;
 			self.enhance.probability = probability * 100;
 			self.enhance.tries = chance == 1 ? 1 : Math.floor(Math.log(1 - probability) / Math.log(1 - chance));
 		}
 
-		function resetEnhance() {
-			var resetEquipEnhance = function(equip) {
-				if ('enhance' in equip) {
-					equip.name = equip.nameEnhanceBase;
-					for (var i = 0; i < equip.properties.length; i += 1) {
-						var property = equip.properties[i];
-						if ((property.key + 'EnhanceBase') in equip) {
-							equip[property.key] = equip[property.key + 'EnhanceBase'];
-						}
-					}
-					delete equip.enhance;
-				}
-			};
-			var equip = $scope.object;
-			resetEquipEnhance(equip);
-			if ('parts' in equip) {
-				for (var i = 0; i < equip.parts.length; i += 1) {
-					var part = equip.parts[i];
-					resetEquipEnhance(part);
-				}
-			}
-			self.enhanceStart = null;
-			self.enhanceEnd = null;
-		}
-
 		function setEnhanceStart(level) {
-			if (self.enhanceEnd < level) {
-				self.enhanceEnd = level;
-				self.setEnhanceStats();
+			if (self.enhance.end < level) {
+				self.enhance.end = level;
+				self.object.setEnhance(level);
 			}
-			self.enhanceStart = level;
+			self.enhance.start = level;
 			self.setEnhanceInfo();
 		}
 
 		function setEnhanceEnd(level) {
-			if (self.enhanceEnd == level) {
-				resetEnhance();
+			if (self.enhance.end == level) {
+				self.enhance.start = null;
+				self.enhance.end = null;
+				self.object.setEnhance(null);
 				return;
 			}
-			if (self.enhanceStart == null) {
-				self.enhanceStart = 1;
+			if (self.enhance.start == null) {
+				self.enhance.start = 1;
 			}
-			else if (self.enhanceStart > level) {
-				self.enhanceStart = level;
+			else if (self.enhance.start > level) {
+				self.enhance.start = level;
 			}
-			self.enhanceEnd = level;
-			$scope.object.enhance = level;
-			self.setEnhanceStats();
+			self.enhance.end = level;
+			self.object.setEnhance(level);
 			self.setEnhanceInfo();
-		};
+		}
 
-		function updateSetProperties() {
-			var properties = {};
-			for (var pi = 0; pi < $scope.object.parts.length; pi += 1) {
-				var equip = $scope.object.parts[pi];
-				for (var pri = 0; pri < $scope.object.properties.length; pri += 1) {
-					var property = $scope.object.properties[pri];
-					if (!(property.key in properties)) {
-						properties[property.key] = 0;
-					}
-					if (property.key in equip && self.selectedSetParts.indexOf(equip.key) >= 0) {
-						properties[property.key] += equip[property.key];
-					}
+		function openScreenshot(direction) {
+			if (self.screenshot.lock == true) {
+				return;
+			}
+			self.screenshot.lock = true;
+			self.screenshot.defer = $q.defer();
+			self.screenshot.curr = self.screenshot.currSrc;
+			self.screenshot.action = 'none';
+			var check = function() {
+				if (document.getElementById('screenshot-images').className == 'images none') {
+					self.screenshot.defer.resolve();
+				}
+				else {
+					$timeout(check, 50);
 				}
 			}
-			if (self.selectedSetParts.length in $scope.object.effects) {
-				var activeEffect = $scope.object.effects[self.selectedSetParts.length];
-				for (var propertyKey in activeEffect) {
-					var propertyValue = activeEffect[propertyKey];
-					if (!(propertyKey in properties)) {
-						properties[propertyKey] = 0;
+			$timeout(check, 10);
+			self.screenshot.defer.promise.then(function() {
+				var newCurrIndex = self.screenshot.currIndex + direction;
+				if (direction < 0) {
+					if (newCurrIndex < 0) {
+						newCurrIndex = self.object.screenshots.length - 1;
 					}
-					properties[propertyKey] += propertyValue;
+					self.screenshot.currIndex = newCurrIndex;
+					self.object.loadScreenshot(newCurrIndex).then(function(src) {
+						self.screenshot.currSrc = src;
+						self.screenshot.prev = src;
+						self.screenshot.action = 'go-prev';
+						$timeout(function() { self.screenshot.lock = false; }, 1100);
+					});
 				}
-			}
-			for (var propertyKey in properties) {
-				$scope.object[propertyKey] = properties[propertyKey];
-			}
-		};
-
-		function updateSetRecipe() {
-			var recipes = {
-				npc: {
-					appearQuestNames: [],
-					shops: []
-				},
-				pc: {
-					expertises: []
-				}
-			};
-			var npcRecipe = false;
-			var pcRecipe = false;
-			var getSetMats = function(recipeType, setParts) {
-				var mats = [];
-				for (var pi = 0; pi < setParts.length; pi += 1) {
-					var equip = setParts[pi];
-					if ('recipes' in equip && recipeType in equip.recipes && self.selectedSetParts.indexOf(equip.key) >= 0) {
-						for (var mi = 0; mi < equip.recipes[recipeType].mats.length; mi += 1) {
-							var mat = equip.recipes[recipeType].mats[mi];
-							var added = false;
-							for (var ami = 0; ami < mats.length; ami += 1) {
-								var addedMat = mats[ami];
-								if (addedMat.key == mat.key) {
-									added = true;
-									addedMat.count += mat.count;
-									break;
-								}
-							}
-							if (!added) {
-								mats.push({
-									key: mat.key,
-									iconID: mat.iconID,
-									name: mat.name,
-									rarity: mat.rarity,
-									order: mat.order,
-									count: mat.count
-								});
-							}
-						}
+				if (direction > 0) {
+					if (newCurrIndex > self.object.screenshots.length - 1) {
+						newCurrIndex = 0;
 					}
+					self.screenshot.currIndex = newCurrIndex;
+					self.object.loadScreenshot(newCurrIndex).then(function(src) {
+						self.screenshot.currSrc = src;
+						self.screenshot.next = src;
+						self.screenshot.action = 'go-next';
+						$timeout(function() { self.screenshot.lock = false; }, 1100);
+					});
 				}
-				mats = mats.sort(function(matA, matB) {
-					if (matA.order > matB.order) return 1;
-					if (matA.order < matB.order) return -1;
-					if (matA.rarity > matB.rarity) return -1;
-					if (matA.rarity < matB.rarity) return 1;
-					if (matA.name > matB.name) return 1;
-					if (matA.name < matB.name) return -1;
-					return 0;
-				});
-				return mats;
-			};
-			for (var pi = 0; pi < $scope.object.parts.length; pi += 1) {
-				var equip = $scope.object.parts[pi];
-				if (self.selectedSetParts.indexOf(equip.key) == -1) {
-					continue;
-				}
-				if (equip.recipes != null && 'npc' in equip.recipes) {
-					npcRecipe = true;
-					if ('appearQuestName' in equip.recipes.npc) {
-						if (recipes.npc.appearQuestNames.indexOf(equip.recipes.npc.appearQuestName) == -1) {
-							recipes.npc.appearQuestNames.push(equip.recipes.npc.appearQuestName);
-						}
-					}
-					for (var si = 0; si < equip.recipes.npc.shops.length; si += 1) {
-						var shop = equip.recipes.npc.shops[si];
-						var added = false;
-						for (var asi = 0; asi < recipes.npc.shops.length; asi += 1) {
-							var addedShop = recipes.npc.shops[asi];
-							if (addedShop.key == shop.key) {
-								added = true;
-								break;
-							}
-						}
-						if (!added) {
-							recipes.npc.shops.push(shop);
-						}
-					}
-				}
-				if (equip.recipes && 'pc' in equip.recipes) {
-					pcRecipe = true;
-					var added = false;
-					for (var i = 0; i < recipes.pc.expertises.length; i += 1) {
-						var addedExpertise = recipes.pc.expertises[i];
-						if (addedExpertise.name == equip.recipes.pc.expertiseName) {
-							added = true;
-							if (addedExpertise.experienceRequired < equip.recipes.pc.expertiseExperienceRequired) {
-								addedExpertise.experienceRequired = equip.recipes.pc.expertiseExperienceRequired;
-							}
-							break;
-						}
-					}
-					if (!added) {
-						recipes.pc.expertises.push({
-							name: equip.recipes.pc.expertiseName,
-							experienceRequired: equip.recipes.pc.expertiseExperienceRequired
-						});
-					}
-				}
-			}
-			if (npcRecipe || pcRecipe) {
-				$scope.object.recipes = {};
-				var totalMats = 0;
-				if (npcRecipe) {
-					recipes.npc.mats = getSetMats('npc', $scope.object.parts);
-					totalMats += recipes.npc.mats.length;
-					$scope.object.recipes.npc = recipes.npc;
-				}
-				if (pcRecipe) {
-					recipes.pc.mats = getSetMats('pc', $scope.object.parts);
-					totalMats += recipes.pc.mats.length;
-					$scope.object.recipes.pc = recipes.pc;
-				}
-				if (totalMats == 0) {
-					$scope.object.recipes = null;
-				}
-			}
-			else {
-				$scope.object.recipes = null;
-			}
-		};
-
-		function toggleSetPart(key) {
-			var i = self.selectedSetParts.indexOf(key);
-			if (i == -1) {
-				self.selectedSetParts.push(key);
-			}
-			else {
-				self.selectedSetParts.splice(i, 1);
-			}
-			self.updateSetProperties();
-			self.updateSetRecipe();
-		};
-
-		function setPartIsSelected(key) {
-			return self.selectedSetParts.indexOf(key) >= 0;
-		};
-
-		function activeSetEffectKey() {
-			return self.selectedSetParts.length;
-		};
-	};
+			});
+		}
+	}
 
 })();
 

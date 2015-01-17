@@ -1,13 +1,13 @@
-<ul class="properties" ng-if="object.properties.length > 0">
-	<li ng-repeat="property in object.properties" ng-if="object[property.key] != 0">
+<ul class="properties" ng-if="object.properties">
+	<li ng-repeat="key in (card ? object.propertyKeys : object.basePropertyKeys)">
 		<span class="property">
-			<span class="key">{{property.shortName}}</span>
-			<span class="value">{{object[property.key]}}{{!$last || (card && object.quality) ? ',' : '' }}</span>
+			<span class="key">{{object.properties[key].shortName}}</span>
+			<span class="value">{{card ? object.properties[key].value : object.properties[key].baseValue}}{{!$last || (card && object.qualityTypeKey) ? ',' : '' }}</span>
 		</span>
 	</li>
-	<li ng-if="card && object.quality">
+	<li ng-if="card && object.qualityTypeKey">
 		<span class="property quality">
-			<i class="fa" ng-class="{ 'fa-star': object.quality >= level, 'fa-star-o': object.quality < level }" ng-click="card.setQuality(level)" ng-repeat="level in [1, 2, 3, 4, 5]"></i>
+			<i class="fa" ng-class="{ 'fa-star': object.quality >= level, 'fa-star-o': object.quality < level }" ng-click="object.setQuality(level)" ng-repeat="level in [1, 2, 3, 4, 5]"></i>
 		</span>
 	</li>
 </ul>

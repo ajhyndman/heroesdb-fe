@@ -416,21 +416,25 @@ div.object-material div.enhance div.level.selected div.marker {
 	cursor: help;
 }
 
+div.object-material div.enhance div.levels.clear div.level.risk-none div.marker,
 div.object-material div.enhance div.level.selected.risk-none div.marker {
 	border-color: #2e7d32;
 	background-color: #2e7d32;
 }
 
+div.object-material div.enhance div.levels.clear div.level.risk-downgrade div.marker,
 div.object-material div.enhance div.level.selected.risk-downgrade div.marker {
 	border-color: #827717;
 	background-color: #827717;
 }
 
+div.object-material div.enhance div.levels.clear div.level.risk-reset div.marker,
 div.object-material div.enhance div.level.selected.risk-reset div.marker {
 	border-color: #ef6c00;
 	background-color: #ef6c00;
 }
 
+div.object-material div.enhance div.levels.clear div.level.risk-break div.marker,
 div.object-material div.enhance div.level.selected.risk-break div.marker {
 	border-color: #d84315;
 	background-color: #d84315;
@@ -441,6 +445,7 @@ div.object-material div.enhance div.level div.chance {
 	font-size: 0.9em;
 }
 
+div.object-material div.enhance div.levels.clear div.chance,
 div.object-material div.enhance div.level.selected div.chance {
 	visibility: visible;
 	cursor: help;
@@ -634,7 +639,6 @@ div#object-card-container {
 
 div#object-card {
 	margin: 10% auto;
-	padding: 0.5em 0;
 	font-size: 0.9em;
 	background-color: #f5f5f5;
 }
@@ -660,6 +664,14 @@ div#object-card-view.ng-leave {
 
 div#object-card > div > * {
 	padding: 1em 1.5em;
+}
+
+div#object-card > div:first-child > * {
+	padding-top: 1.5em;
+}
+
+div#object-card > div:last-child > * {
+	padding-bottom: 1.5em;
 }
 
 
@@ -711,6 +723,149 @@ div.object-material span.name.rarity3 {
 div#items table#table td span.name.rarity4,
 div.object-material span.name.rarity4 {
 	color: #8e24aa;
+}
+
+
+
+#object-card div.title-container.with-screenshots {
+	position: relative;
+	padding: 0;
+}
+
+#object-card div.title-container.with-screenshots div.title {
+	position: absolute;
+	left: 0em;
+	bottom: 0em;
+	padding: 1em 1.5em;
+	background: rgba(45, 45, 45, 0.25);
+	color: rgba(255, 255, 255, 0.73);
+}
+
+#object-card div.title-container.with-screenshots span.name.rarity1 {
+	color: #bdbdbd;
+}
+
+#object-card div.title-container.with-screenshots span.name.rarity2 {
+	color: #81c784;
+}
+
+#object-card div.title-container.with-screenshots span.name.rarity3 {
+	color: #64b5f6;
+}
+
+#object-card div.title-container.with-screenshots span.name.rarity4 {
+	color: #ba68c8;
+}
+
+#object-card div.screenshots {
+	max-height: 150px;
+	overflow: hidden;
+	white-space: nowrap;
+	line-height: 0;
+	transition: max-height 1s ease-out;
+	cursor: pointer;
+}
+
+#object-card div.screenshots.expanded {
+	max-height: 800px;
+	height: 100%;
+}
+
+#object-card div.screenshots div.images {
+	font-size: 0;
+}
+
+#object-card div.screenshots div.images img {
+	width: 100%;
+	margin-top: -10%;
+	transition: margin-top 1s ease-out;
+}
+
+#object-card div.screenshots div.images img:first-child {
+	margin-left: -100%;
+}
+
+@keyframes go-prev {
+	from { margin-left: -100%; }
+	to { margin-left: 0; }
+}
+
+@keyframes go-next {
+	from { margin-left: -100%; }
+	to { margin-left: -200%; }
+}
+
+@-webkit-keyframes go-prev {
+	from { margin-left: -100%; }
+	to { margin-left: 0; }
+}
+
+@-webkit-keyframes go-next {
+	from { margin-left: -100%; }
+	to { margin-left: -200%; }
+}
+
+#object-card div.screenshots div.images.go-prev img:first-child {
+	margin-left: 0%;
+	animation: go-prev 1s ease-out;
+	-webkit-animation: go-prev 1s ease-out;
+}
+
+#object-card div.screenshots div.images.go-next img:first-child {
+	margin-left: -200%;
+	animation: go-next 1s ease-out;
+	-webkit-animation: go-next 1s ease-out;
+}
+
+#object-card div.screenshots.expanded div.images img {
+	margin-top: 0;
+}
+
+#object-card div.screenshots div.control {
+	display: none;
+}
+
+#object-card div.screenshots div.control.disabled {
+	cursor: default;
+}
+
+#object-card div.screenshots.expanded div.control {
+	display: block;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 10%;
+}
+
+#object-card div.screenshots.expanded div.control.prev {
+	left: 0;
+}
+
+#object-card div.screenshots.expanded div.control.next {
+	right: 0;
+}
+
+#object-card div.screenshots.expanded div.control.prev span {
+	left: 1.5em;
+}
+
+#object-card div.screenshots.expanded div.control.next span {
+	right: 1.5em;
+}
+
+#object-card div.screenshots.expanded div.control span {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+#object-card div.screenshots.expanded div.control span i {
+	font-size: 2.2em;
+	color: rgba(255, 255, 255, 0.20);
+}
+
+#object-card div.screenshots.expanded div.control:hover span i {
+	color: rgba(255, 255, 255, 0.73);
 }
 
 

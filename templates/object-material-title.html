@@ -1,7 +1,22 @@
-<div class="title" layout="horizontal" layout-align="start center">
-	<div class="icon"><img width="40" height="40" ng-src="/data/icons/{{object.iconID ? object.iconID : 0}}.png" /></div>
-	<div flex>
-		<span class="name rarity{{object.rarity}}">{{object.name}}</span>
-		<div class="classification" ng-if="object.classification"><span>{{object.classification}}</span></div>
+<div class="title-container" ng-class="{ 'with-screenshots': card && object.screenshots.length }">
+	<div class="screenshots" ng-class="{ 'expanded': card.screenshot.expanded }" ng-if="card && object.screenshots.length">
+		<div id="screenshot-images" class="images {{card.screenshot.action}}" ng-click="card.screenshot.expanded = !card.screenshot.expanded">
+			<img class="prev" ng-src="{{card.screenshot.prev}}">
+			<img class="curr" ng-src="{{card.screenshot.curr}}">
+			<img class="next" ng-src="{{card.screenshot.next}}">
+		</div>
+		<div class="control prev" ng-class="{ 'disabled': card.screenshot.lock }" ng-click="card.openScreenshot(-1)">
+			<span><i class="fa fa-chevron-left"></i></span>
+		</div>
+		<div class="control next" ng-class="{ 'disabled': card.screenshot.lock }" ng-click="card.openScreenshot(1)">
+			<span><i class="fa fa-chevron-right"></i></span>
+		</div>
+	</div>
+	<div class="title" layout="horizontal" layout-align="start center">
+		<div class="icon"><img width="40" height="40" ng-src="/data/icons/{{object.iconID ? object.iconID : 0}}.png" /></div>
+		<div>
+			<span class="name rarity{{object.rarity}}">{{card ? object.name : object.baseName}}</span>
+			<div class="classification" ng-if="object.classification"><span>{{object.classification}}</span></div>
+		</div>
 	</div>
 </div>

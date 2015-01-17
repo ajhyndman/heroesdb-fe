@@ -3,11 +3,11 @@
 		<tr>
 			<th colspan="2">Item</th>
 			<th>Type</th>
-			<th ng-repeat="column in columns">{{column.shortName}}</th>
+			<th ng-repeat="column in card.setPartColumns">{{column.shortName}}</th>
 		</tr>
 	</thead>
 	<tbody>
-		<tr ng-class="{ 'selected': card.setPartIsSelected(part.key) }" ng-click="card.toggleSetPart(part.key);" ng-repeat="part in object.parts">
+		<tr ng-class="{ 'selected': object.partIsEnabled(part.key) }" ng-click="object.togglePart(part.key);" ng-repeat="part in object.parts">
 			<td>
 				<div class="icon" object-hovercard="{{part.key}}.equip">
 					<img width="30" height="30" ng-src="/data/icons/{{part.iconID ? part.iconID : 0}}.png" />
@@ -19,13 +19,13 @@
 				</span>
 			</td>
 			<td>{{part.classification}}</td>
-			<td ng-repeat="column in columns">{{part[column.key]}}</td>
+			<td ng-repeat="column in card.setPartColumns">{{part.properties[column.key].value}}</td>
 		</tr>
 	</tbody>
 	<tfoot class="effects">
-		<tr ng-class="{ 'active': partCount == card.activeSetEffectKey() }" ng-repeat="(partCount, effect) in object.effects">
+		<tr ng-class="{ 'active': partCount == object.activeEffectKey() }" ng-repeat="(partCount, effect) in object.effects">
 			<td colspan="3">{{partCount}} part bonus</td>
-			<td ng-repeat="column in columns">{{effect[column.key]}}</td>
+			<td ng-repeat="column in card.setPartColumns">{{effect[column.key]}}</td>
 		</tr>
 	</tfoot>
 </table>
