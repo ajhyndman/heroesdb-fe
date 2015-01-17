@@ -305,7 +305,7 @@
 					value: value,
 					baseValue: value
 				};
-				if (property.base == true && value > 0) {
+				if (property.base == true && value != 0) {
 					self.propertyKeys.push(property.key);
 					self.basePropertyKeys.push(property.key);
 				}
@@ -339,7 +339,7 @@
 			function updatePropertyKeys() {
 				self.propertyKeys = [];
 				ObjectProperties.get().forEach(function(property) {
-					if (property.base == true && self.properties[property.key].value > 0) {
+					if (property.base == true && self.properties[property.key].value != 0) {
 						self.propertyKeys.push(property.key);
 					}
 				});
@@ -631,6 +631,12 @@
 							promise.then(function(equip) {
 								self.parts.push(equip);
 								self.enabledParts.push(equip.key);
+								if (equip.qualityTypeKey != null) {
+									self.qualityTypeKey = 'set';
+								}
+								if (equip.enhanceTypeKey != null) {
+									self.enhanceTypeKey = 'set';
+								}
 							});
 						}
 					});
@@ -1346,7 +1352,7 @@
 					});
 					for (var i = 0; i < defaultColumns.length && columns.length < 6; i += 1) {
 						var defaultColumn = defaultColumns[i];
-						if (columns.indexOf(defaultColumn) == -1 && self.object.properties[defaultColumn].baseValue > 0) {
+						if (columns.indexOf(defaultColumn) == -1 && self.object.properties[defaultColumn].baseValue != 0) {
 							columns.push(defaultColumn);
 						}
 					}
@@ -1356,8 +1362,9 @@
 						}
 					});
 				}
-				self.object.setQuality(2, true);
-				self.object.setEnhance(null, true);
+				self.object.setQuality(2).then(function() {
+					self.object.setEnhance(null);
+				});
 			});
 			var screenshotDefer = $q.defer();
 			promises.push(screenshotDefer.promise);
