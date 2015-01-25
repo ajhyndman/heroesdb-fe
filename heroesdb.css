@@ -637,7 +637,12 @@ div#object-card-container {
 	background-color: rgba(229, 229, 229, 0.75);
 }
 
+div#object-card-flex {
+	margin: 0 auto;
+}
+
 div#object-card {
+	max-width: 1000px;
 	margin: 10% auto;
 	font-size: 0.9em;
 	background-color: #f5f5f5;
@@ -730,6 +735,7 @@ div.object-material span.name.rarity4 {
 #object-card div.title-container.with-screenshots {
 	position: relative;
 	padding: 0;
+	padding-bottom: -16px;
 }
 
 #object-card div.title-container.with-screenshots div.title {
@@ -737,7 +743,7 @@ div.object-material span.name.rarity4 {
 	left: 0em;
 	bottom: 0em;
 	padding: 1em 1.5em;
-	background: rgba(45, 45, 45, 0.25);
+	background: rgba(45, 45, 45, 0.50);
 	color: rgba(255, 255, 255, 0.73);
 }
 
@@ -778,6 +784,7 @@ div.object-material span.name.rarity4 {
 #object-card div.screenshots div.images img {
 	width: 100%;
 	margin-top: -10%;
+	margin-bottom: -24px;
 	transition: margin-top 1s ease-out;
 }
 
@@ -835,6 +842,10 @@ div.object-material span.name.rarity4 {
 	top: 0;
 	bottom: 0;
 	width: 10%;
+}
+
+#object-card div.screenshots div.control.hidden {
+	display: none;
 }
 
 #object-card div.screenshots.expanded div.control.prev {

@@ -4,27 +4,28 @@
 
 	var app = angular.module('heroesdb', ['ngResource', 'ngAnimate', 'ui.router']);
 
-	app.run(['$rootScope', '$location', '$window', function($rootScope, $location, $window) {
+	run.$inject = ['$rootScope', '$location', '$window'];
+	function run($rootScope, $location, $window) {
+		//	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) { console.log('$stateChangeStart to ' + toState.name); });
+		//	$rootScope.$on('$stateChangeError', function(event, toState, toParams, fromState, fromParams) { console.log('$stateChangeError'); });
+		//	$rootScope.$on('$stateChangeSuccess', function(event, toState, toParams, fromState, fromParams) { console.log('$stateChangeSuccess to ' + toState.name); });
+		//	$rootScope.$on('$viewContentLoaded', function(event) { console.log('$viewContentLoaded'); });
+		//	$rootScope.$on('$stateNotFound', function(event, unfoundState, fromState, fromParams) { console.log('$stateNotFound ' + unfoundState.to); });
 		$rootScope.$on('$stateChangeSuccess', function(event) {
 			if (!$window.ga) {
 				return;
 			}
 			$window.ga('send', 'pageview', { page: $location.path() });
 		});
-	}]);
-
-	//app.run(['$rootScope', function($rootScope) {
-	//	$rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams) { console.log('$stateChangeStart to ' + toState.name); });
-	//	$rootScope.$on('$stateChangeError', function(event, toState, toParams, fromState, fromParams) { console.log('$stateChangeError'); });
-	//	$rootScope.$on('$stateChangeSuccess', function(event, toState, toParams, fromState, fromParams) { console.log('$stateChangeSuccess to ' + toState.name); });
-	//	$rootScope.$on('$viewContentLoaded', function(event) { console.log('$viewContentLoaded'); });
-	//	$rootScope.$on('$stateNotFound', function(event, unfoundState, fromState, fromParams) { console.log('$stateNotFound ' + unfoundState.to); });
-	//}]);
+	}
+	app.run(run);
 
 
 	config.$inject = ['$compileProvider', '$stateProvider', '$locationProvider', '$urlRouterProvider', '$httpProvider'];
 	function config($compileProvider, $stateProvider, $locationProvider, $urlRouterProvider, $httpProvider) {
 		$compileProvider.debugInfoEnabled(false);
+		$httpProvider.interceptors.push('VersionInterceptor');
+		$httpProvider.interceptors.push('LoadingStatusInterceptor');
 		$locationProvider.html5Mode({
 			enabled: true,
 			requireBase: false
@@ -66,12 +67,13 @@
 			controller: 'ObjectCardController',
 			controllerAs: 'card',
 		});
-		$httpProvider.interceptors.push('LoadingStatus');
 	}
 	app.config(config);
 
 
-	app.factory('LoadingStatus', LoadingStatusService);
+	app.factory('VersionInterceptor', VersionInterceptorService);
+	app.factory('LoadingStatusInterceptor', LoadingStatusInterceptorService);
+
 	app.factory('Characters', CharactersService);
 	app.factory('Classification', ClassificationService);
 	app.factory('ObjectList', ObjectListService);
@@ -92,9 +94,23 @@
 	app.controller('ObjectCardController', ObjectCardController);
 
 
-	LoadingStatusService.$inject = ['$rootScope', '$q'];
-	function LoadingStatusService($rootScope, $q) {
+	VersionInterceptorService.$inject = ['$q'];
+	function VersionInterceptorService($q) {
 		var self = this;
+		self.request = request;
+
+		function request(config) {
+			config.url += '?v=' + version;
+			return config || $q.when(config);
+		}
+
+		return { request: self.request }
+	}
+
+	LoadingStatusInterceptorService.$inject = ['$rootScope', '$q'];
+	function LoadingStatusInterceptorService($rootScope, $q) {
+		var self = this;
+		self.activeRequests = 0;
 		self.request = request;
 		self.response = response;
 		self.responseError = responseError;
@@ -102,28 +118,27 @@
 		$rootScope.loading = false;
 
 		function request(config) {
-			activeRequests += 1;
+			self.activeRequests += 1;
 			$rootScope.loading = true;
 			return config || $q.when(config);
 		}
 
 		function response(response) {
-			activeRequests -= 1;
-			if (activeRequests == 0) {
+			self.activeRequests -= 1;
+			if (self.activeRequests == 0) {
 				$rootScope.loading = false;
 			}
 			return response || $q.when(response);
 		}
 
 		function responseError(rejection) {
-			activeRequests -= 1;
-			if (activeRequests == 0) {
+			self.activeRequests -= 1;
+			if (self.activeRequests == 0) {
 				$rootScope.loading = false;
 			}
 			return $q.reject(rejection);
 		}
 
-		var activeRequests = 0;
 		return {
 			request: self.request,
 			response: self.response,
@@ -263,6 +278,7 @@
 	function ObjectService($q, $resource, ObjectProperties, Characters, QualityType, EnhanceType) {
 		function Mat(data) {
 			var self = this;
+			self.type = 'mat';
 			self.key = data.key;
 			self.iconID = data.iconID;
 			self.name = data.name;
@@ -276,6 +292,7 @@
 			Mat.apply(this, arguments);
 			var self = this;
 			self.defer = $q.defer();
+			self.type = 'equip';
 			self.properties = {};
 			self.propertyKeys = [];
 			self.basePropertyKeys = [];
@@ -294,6 +311,7 @@
 			self.classRestriction = [];
 			self.recipes = data.recipes || null;
 			self.screenshots = data.screenshots || [];
+			self.getScreenshotCharacterIndex = getScreenshotCharacterIndex;
 			self.loadScreenshot = loadScreenshot;
 
 			var promises = [];
@@ -431,10 +449,32 @@
 				return defer.promise;
 			}
 
+			function getScreenshotCharacterIndex(state) {
+				var requiredCharacter = null;
+				if (state.groupKey == 'armor' && state.typeKey == 'set' && 'categoryKey' in state) {
+					var categories = { 'lann': 1, 'fiona': 2, 'evie': 4, 'karok': 8, 'kai': 16, 'vella': 32, 'hurk': 64, 'lynn': 128, 'arisha': 256 };
+					requiredCharacter = categories[state.categoryKey];
+				}
+				else if (state.groupKey == 'weapon' && state.typeKey == 'all' && 'categoryKey' in state) {
+					var categories = { 'dualsword': 1, 'dualspear': 1, 'longsword': 2, 'hammer': 2, 'staff': 4, 'scythe': 4, 'pillar': 8, 'blaster': 8, 'bow': 16, 'crossgun': 16, 'dualblade': 32, 'greatsword': 64, 'battleglaive': 128, 'longblade': 256 };
+					requiredCharacter = categories[state.categoryKey];
+				}
+				if (requiredCharacter != null) {
+					for (var i = 0; i < self.screenshots.length; i += 1) {
+						var screenshot = self.screenshots[i];
+						var character = screenshot.substr(screenshot.lastIndexOf('_') + 1, screenshot.length - screenshot.lastIndexOf('_') - 12);
+						if (parseInt(character) == requiredCharacter) {
+							return i;
+						}
+					}
+				}
+				return 0;
+			}
+
 			function loadScreenshot(index) {
 				var defer = $q.defer();
 				var img = new Image();
-				img.src = '/data/screenshots/' + self.screenshots[index];
+				img.src = '/data/screenshots/' + self.type + 's/' + self.screenshots[index];
 				img.onload = function() {
 					defer.resolve(img.src);
 				};
@@ -447,6 +487,7 @@
 		function Set(data, Object) {
 			Equip.apply(this, arguments);
 			var self = this;
+			self.type = 'set';
 			self.updateProperties = updateProperties;
 			self.updateRecipes = updateRecipes;
 			self.setQuality = setQuality;
@@ -1372,7 +1413,8 @@
 				screenshotDefer.resolve();
 			}
 			else {
-				self.object.loadScreenshot(0).then(function(src) {
+				self.screenshot.currIndex = self.object.getScreenshotCharacterIndex($stateParams);
+				self.object.loadScreenshot(self.screenshot.currIndex).then(function(src) {
 					self.screenshot.currSrc = src;
 					self.screenshot.prev = src;
 					self.screenshot.curr = src;

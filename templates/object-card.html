@@ -1,12 +1,14 @@
 <div id="object-card-container" ng-show="card.visible" ng-click="card.hide()">
-	<div id="object-card" class="object-card object-material z2" flex-lg="60" flex-md="70" flex-sm="90" ng-click="$event.stopPropagation()">
-		<div ng-include="'/templates/object-material-title.html'"></div>
-		<div class="main">
-			<div ng-include="'/templates/object-material-properties.html'"></div>
-			<div ng-include="'/templates/object-material-enhance.html'" ng-if="object.enhanceTypeKey && object.enhanceTypeKey != 'set'"></div>
-			<div ng-include="'/templates/object-material-parts.html'" ng-if="object.parts"></div>
-			<div ng-include="'/templates/object-material-recipes.html'" ng-if="object.recipes"></div>
+	<div id="object-card-flex" flex-lg="60" flex-md="70" flex-sm="90">
+		<div id="object-card" class="object-card object-material z2" ng-click="$event.stopPropagation()">
+			<div ng-include="'/templates/object-material-title.html'"></div>
+			<div class="main">
+				<div ng-include="'/templates/object-material-properties.html'"></div>
+				<div ng-include="'/templates/object-material-enhance.html'" ng-if="object.enhanceTypeKey && object.enhanceTypeKey != 'set'"></div>
+				<div ng-include="'/templates/object-material-parts.html'" ng-if="object.parts"></div>
+				<div ng-include="'/templates/object-material-recipes.html'" ng-if="object.recipes"></div>
+			</div>
+			<div ng-include="'/templates/object-material-requirements.html'"></div>
 		</div>
-		<div ng-include="'/templates/object-material-requirements.html'"></div>
 	</div>
 </div>
