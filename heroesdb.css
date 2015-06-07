@@ -30,7 +30,7 @@ table {
 	border-collapse: collapse;
 }
 
-ul, ol, dl {
+ul, ol, dl, li, dt, dd {
 	margin: 0;
 	padding: 0;
 	list-style-type: none;
@@ -325,6 +325,10 @@ div.object-material div.main {
 	background-color: #fff;
 }
 
+div.object-material dl.properties dt {
+	font-size: 0.9em;
+}
+
 div.object-material ul.properties span.property {
 	white-space: nowrap;
 }
@@ -601,6 +605,105 @@ div.object-material div.recipe div.appear span.quest {
 
 
 
+div.object-material div.enchant-chances div.success {
+	border-bottom: 1px solid #ddd;
+}
+
+div.object-material div.enchant-chances div.min,
+div.object-material div.enchant-chances div.max,
+div.object-material div.enchant-chances div.break {
+	height: 0.5em;
+}
+
+div.object-material div.enchant-chances div.min {
+	background-color: #2e7d32;
+}
+
+div.object-material div.enchant-chances div.max {
+	background-color: #827717;
+}
+
+div.object-material div.enchant-chances div.break {
+	background-color: #d84315;
+}
+
+
+
+div.object-material div.enchants.prefix {
+	border-right: 1px solid #ddd;
+}
+
+div.object-material div.enchants div.slot {
+	height: 55px;
+	border-bottom: 1px solid #ddd;
+}
+
+div.object-material div.enchants.prefix ul {
+	margin: 1em 0 1em 0;
+}
+
+div.object-material div.enchants.suffix ul {
+	margin: 1em 0 1em 0;
+}
+
+div.object-material div.enchants ul li {
+	cursor: pointer;
+}
+
+div.object-material div.enchants.prefix ul li {
+	padding-right: 2em;
+}
+
+div.object-material div.enchants.suffix ul li {
+	padding-left: 2em;
+}
+
+div.object-material div.enchants ul li > div {
+	font-size: 0.9em;
+	padding-top: 0.3em;
+}
+
+div.object-material div.enchants ul li.selected {
+	background-color: #f5f5f5;
+}
+
+div.object-material div.enchants ul div.icon {
+	margin-right: 1em;
+	cursor: help;
+}
+
+div.object-material div.enchants div.limit {
+	text-align: center;
+	cursor: pointer;
+}
+
+@media (max-width: 959px) {
+
+	div.object-material div.enchants.prefix {
+		border-right: 0;
+		margin-bottom: 1em;
+	}
+
+	div.object-material div.enchants.prefix ul {
+		margin: 0;
+	}
+
+	div.object-material div.enchants.suffix ul {
+		margin: 0;
+	}
+
+	div.object-material div.enchants.prefix ul li {
+		padding-right: 0;
+	}
+
+	div.object-material div.enchants.suffix ul li {
+		padding-left: 0;
+	}
+
+}
+
+
+
 div#object-hovercard {
 	position: fixed;
 	z-index: 1000;
@@ -688,16 +791,17 @@ div.object-material div.icon {
 }
 
 div.object-material div.recipe ul.mats div.icon,
+div.object-material div.enchants ul div.icon,
 div.object-material table.parts div.icon {
-	width: 30px;
-	height: 30px;
+	width: 32px;
+	height: 32px;
 }
 
 div#items table#table td div.icon img,
 div.object-material div.icon img {
 	border: 1px solid #555;
 	border-radius: 20px;
-	background: url('/data/icons/0.png') no-repeat center center;
+	background: url('/data/icons/blank.png') no-repeat center center;
 }
 
 div#items table#table td span.name,

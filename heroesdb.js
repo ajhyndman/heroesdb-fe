@@ -230,7 +230,10 @@
 		self.get = get;
 
 		function get(categoryKey, typeKey) {
-			var key = categoryKey + '-' + typeKey;
+			var key = categoryKey;
+			if (typeKey != null) {
+				key += '-' + typeKey;
+			}
 			if (!(key in self.objectLists)) {
 				self.objectLists[key] = self.resource.query({ key: key });
 			}
@@ -274,21 +277,21 @@
 		return { get: self.get };
 	}
 
-	ObjectService.$inject = ['$q', '$resource', 'ObjectProperties', 'Characters', 'QualityType', 'EnhanceType'];
-	function ObjectService($q, $resource, ObjectProperties, Characters, QualityType, EnhanceType) {
+	ObjectService.$inject = ['$q', '$resource', 'ObjectProperties', 'Characters', 'QualityType', 'EnhanceType', 'ObjectList'];
+	function ObjectService($q, $resource, ObjectProperties, Characters, QualityType, EnhanceType, ObjectList) {
 		function Mat(data) {
 			var self = this;
 			self.type = 'mat';
 			self.key = data.key;
-			self.iconID = data.iconID;
+			self.iconID = data.iconID || null;
 			self.name = data.name;
 			self.baseName = data.name;
 			self.classification = data.classification;
-			self.description = data.description;
-			self.rarity = data.rarity;
+			self.description = data.description || null;
+			self.rarity = data.rarity || null;
 		}
 
-		function Equip(data) {
+		function Equip(data, Object) {
 			Mat.apply(this, arguments);
 			var self = this;
 			self.defer = $q.defer();
@@ -297,6 +300,7 @@
 			self.propertyKeys = [];
 			self.basePropertyKeys = [];
 			self.updatePropertyKeys = updatePropertyKeys;
+			self.setUpgrades = setUpgrades;
 			self.quality = 2;
 			self.qualityTypeKey = data.qualityTypeKey || null;
 			self.qualityType = null;
@@ -306,6 +310,10 @@
 			self.enhanceType = null;
 			self.setEnhance = setEnhance;
 			self.set = data.set;
+			self.prefixEnchant = null;
+			self.suffixEnchant = null;
+			self.toggleEnchant = toggleEnchant;
+			self.enchants = null;
 			self.requiredSkills = data.requiredSkills;
 			self.requiredLevel = data.requiredLevel;
 			self.classRestriction = [];
@@ -329,9 +337,9 @@
 				}
 			});
 
-			var promise = Characters.get();
-			promises.push(promise);
-			promise.then(function(characters) {
+			var charactersPromise = Characters.get();
+			promises.push(charactersPromise);
+			charactersPromise.then(function(characters) {
 				characters.forEach(function(character) {
 					if ((data.classRestriction & character.id) == character.id) {
 						self.classRestriction.push(character.name);
@@ -343,12 +351,46 @@
 			});
 
 			if (self.enhanceTypeKey != null) {
-				var promise = EnhanceType.get(self.enhanceTypeKey).$promise;
-				promises.push(promise);
-				promise.then(function(enhanceType) {
+				var enhanceTypePromise = EnhanceType.get(self.enhanceTypeKey).$promise;
+				promises.push(enhanceTypePromise);
+				enhanceTypePromise.then(function(enhanceType) {
 					self.enhanceType = enhanceType;
 				});
 			}
+
+			var enchantPromise = ObjectList.get('enchants').$promise;
+			promises.push(enchantPromise);
+			enchantPromise.then(function(enchants) {
+				var permittedEnchants = [];
+				enchants.forEach(function(enchant) {
+					enchant.restrictions.forEach(function(restriction) {
+						var permitted = true;
+						permitted &= restriction[0] == null || data.groupKey == restriction[0];
+						permitted &= restriction[1] == null || data.typeKey == restriction[1];
+						permitted &= restriction[2] == null || data.categoryKeys.indexOf(restriction[2]) != -1;
+						permitted &= restriction[3] == null || data.key == restriction[3];
+						if (permitted) {
+							permittedEnchants.push(enchant.key);
+						}
+					});
+				});
+				if (permittedEnchants.length > 0) {
+					self.enchants = {
+						prefix: [],
+						suffix: []
+					};
+					enchants.forEach(function(enchant) {
+						if (permittedEnchants.indexOf(enchant.key) >= 0) {
+							if (enchant.prefix) {
+								self.enchants.prefix.push(enchant);
+							}
+							else {
+								self.enchants.suffix.push(enchant);
+							}
+						}
+					});
+				}
+			});
 
 			$q.all(promises).then(function() {
 				self.defer.resolve(self);
@@ -363,90 +405,104 @@
 				});
 			}
 
-			function setQuality(level, internal) {
-				internal = internal == undefined ? false : internal;
+			function setUpgrades(qualityLevel, enhanceLevel, prefixEnchantKey, suffixEnchantKey) {
 				var defer = $q.defer();
-				var qualityDefer = $q.defer();
-				ObjectProperties.get().forEach(function(property) {
-					var key = property.key;
-					self.properties[key].value = self.properties[key].baseValue;
-				});
-				if (level == 2) {
-					self.quality = level;
-					qualityDefer.resolve();
+				var promises = [];
+				if (qualityLevel != null && qualityLevel != 2) {
+					promises.push(QualityType.get(self.qualityTypeKey).$promise);
 				}
-				else {
-					QualityType.get(self.qualityTypeKey).$promise.then(function(qualityType) {
-						self.qualityType = qualityType;
+				if (enhanceLevel != null) {
+					promises.push(EnhanceType.get(self.enhanceTypeKey).$promise);
+				}
+				if (prefixEnchantKey != null) {
+					promises.push(Object.get('enchant', prefixEnchantKey));
+				}
+				if (suffixEnchantKey != null) {
+					promises.push(Object.get('enchant', suffixEnchantKey));
+				}
+				$q.all(promises).then(function(data) {
+					ObjectProperties.get().forEach(function(property) {
+						var key = property.key;
+						self.properties[key].value = self.properties[key].baseValue;
+					});
+					var nameParts = [];
+					if (qualityLevel != null && qualityLevel != 2) {
+						self.qualityType = data.shift();
 						ObjectProperties.get().forEach(function(property) {
 							var key = property.key;
-							if (key in self.qualityType[level]) {
-								self.properties[key].value = Math.floor(self.properties[key].value * (1 + self.qualityType[level][key]));
+							if (key in self.qualityType[qualityLevel]) {
+								self.properties[key].value = Math.floor(self.properties[key].value * (1 + self.qualityType[qualityLevel][key]));
 							}
 						});
-						self.quality = level;
-						qualityDefer.resolve();
-					});
-				}
-				qualityDefer.promise.then(function() {
-					if (internal == true) {
-						defer.resolve();
+					}
+					self.quality = qualityLevel || 2;
+
+					if (enhanceLevel != null) {
+						self.enhanceType = data.shift();
+						ObjectProperties.get().forEach(function(property) {
+							var key = property.key;
+							if (key in self.enhanceType[enhanceLevel]) {
+								if (key == 'weight') {
+									self.properties[key].value = Math.floor(self.properties[key].value * (1 + self.enhanceType[enhanceLevel][key]));
+								}
+								else {
+									self.properties[key].value += self.enhanceType[enhanceLevel][key];
+								}
+							}
+						});
+						nameParts.push('+' + enhanceLevel);
+					}
+					self.enhance = enhanceLevel;
+
+					function setEnchant(enchant) {
+						enchant.propertyKeys.forEach(function(set) {
+							set.keys.forEach(function(key) {
+								var property = enchant.properties[set.condition][key];
+								if (property.value != null) {
+									self.properties[key].value += property.value;
+								}
+							});
+						});
+						nameParts.push(enchant.name);
+					}
+					if (prefixEnchantKey == null) {
+						self.prefixEnchant = null;
+					} else {
+						self.prefixEnchant = data.shift();
+						setEnchant(self.prefixEnchant);
+					}
+					if (suffixEnchantKey == null) {
+						self.suffixEnchant = null;
 					}
 					else {
-						self.setEnhance(self.enhance, true).then(function() {
-							self.updatePropertyKeys();
-							defer.resolve();
-						});
+						self.suffixEnchant = data.shift();
+						setEnchant(self.suffixEnchant);
 					}
+
+					self.updatePropertyKeys();
+					nameParts.push(self.baseName);
+					self.name = nameParts.join(' ');
+					defer.resolve();
 				});
 				return defer.promise;
 			}
 
-			function setEnhance(level, internal) {
-				internal = internal == undefined ? false : internal;
-				var defer = $q.defer();
-				var qualityDefer = $q.defer();
-				if (internal == true) {
-					qualityDefer.resolve();
-				}
-				else {
-					self.setQuality(self.quality, true).then(function() {
-						qualityDefer.resolve();
-					});
-				}
-				qualityDefer.promise.then(function() {
-					if (level == null) {
-						if (internal == false) {
-							self.updatePropertyKeys();
-						}
-						self.name = self.baseName;
-						self.enhance = level;
-						defer.resolve();
-					}
-					else {
-						EnhanceType.get(self.enhanceTypeKey).$promise.then(function(enhanceType) {
-							self.enhanceType = enhanceType;
-							ObjectProperties.get().forEach(function(property) {
-								var key = property.key;
-								if (key in self.enhanceType[level]) {
-									if (key == 'weight') {
-										self.properties[key].value = Math.floor(self.properties[key].value * (1 + self.enhanceType[level][key]));
-									}
-									else {
-										self.properties[key].value = Math.floor(self.properties[key].value + self.enhanceType[level][key]);
-									}
-								}
-							});
-							if (internal == false) {
-								self.updatePropertyKeys();
-							}
-							self.name = '+' + level + ' ' + self.baseName;
-							self.enhance = level;
-							defer.resolve();
-						});
-					}
-				});
-				return defer.promise;
+			function setQuality(level) {
+				var prefixEnchant = self.prefixEnchant ? self.prefixEnchant.key : null;
+				var suffixEnchant = self.suffixEnchant ? self.suffixEnchant.key : null;
+				return self.setUpgrades(level, self.enhance, prefixEnchant, suffixEnchant);
+			}
+
+			function setEnhance(level) {
+				var prefixEnchant = self.prefixEnchant ? self.prefixEnchant.key : null;
+				var suffixEnchant = self.suffixEnchant ? self.suffixEnchant.key : null;
+				return self.setUpgrades(self.quality, level, prefixEnchant, suffixEnchant);
+			}
+
+			function toggleEnchant(prefix, key) {
+				var prefixEnchant = prefix ? (self.prefixEnchant && self.prefixEnchant.key == key ? null : key) : (self.prefixEnchant ? self.prefixEnchant.key : null);
+				var suffixEnchant = !prefix ? (self.suffixEnchant && self.suffixEnchant.key == key ? null : key) : (self.suffixEnchant ? self.suffixEnchant.key : null);
+				return self.setUpgrades(self.quality, self.enhance, prefixEnchant, suffixEnchant);
 			}
 
 			function getScreenshotCharacterIndex(state) {
@@ -490,6 +546,7 @@
 			self.type = 'set';
 			self.updateProperties = updateProperties;
 			self.updateRecipes = updateRecipes;
+			self.setUpgrades = setUpgrades;
 			self.setQuality = setQuality;
 			self.setEnhance = setEnhance;
 			self.partsInitialized = false;
@@ -628,32 +685,27 @@
 				}
 			}
 
-			function setQuality(level, internal) {
+			function setUpgrades(qualityLevel, enhanceLevel) {
 				var defer = $q.defer();
 				var promises = [];
 				self.parts.forEach(function(part) {
-					promises.push(part.setQuality(level, internal));
+					promises.push(part.setUpgrades(qualityLevel, enhanceLevel, null, null));
 				});
 				$q.all(promises).then(function() {
 					self.updateProperties();
-					self.quality = level;
+					self.quality = qualityLevel || 2;
+					self.enhance = enhanceLevel;
 					defer.resolve();
 				});
 				return defer.promise;
 			}
 
-			function setEnhance(level, internal) {
-				var defer = $q.defer();
-				var promises = [];
-				self.parts.forEach(function(part) {
-					promises.push(part.setEnhance(level, internal));
-				});
-				$q.all(promises).then(function() {
-					self.updateProperties();
-					self.enhance = level;
-					defer.resolve();
-				});
-				return defer.promise;
+			function setQuality(level) {
+				return self.setUpgrades(level, self.enhance);
+			}
+
+			function setEnhance(level) {
+				return self.setUpgrades(self.quality, level);
 			}
 
 			function loadParts() {
@@ -718,6 +770,53 @@
 		Set.prototype = Equip.prototype;
 		Set.prototype.constructior = Set;
 
+		function Enchant(data) {
+			Mat.apply(this, arguments);
+			var self = this;
+			self.type = 'enchant';
+			self.iconID = 'enchant_scroll';
+			self.classification = 'Enchant Scroll, Rank ' + data.rank + ' ' + (data.prefix ? 'Prefix' : 'Suffix');
+			self.rarity = 2;
+			self.properties = {};
+			self.propertyKeys = [];
+			self.prefix = data.prefix;
+			self.rank = data.rank;
+			self.restrictionsText = data.restrictionsText;
+			self.minSuccessChance = data.minSuccessChance;
+			self.maxSuccessChance = data.maxSuccessChance;
+			self.breakChance = data.breakChance;
+
+			var objectProperties = {};
+			ObjectProperties.get().forEach(function(property) {
+				objectProperties[property.key] = property;
+			});
+			var propertyConditions = {};
+			data.properties.forEach(function(dataProperty) {
+				var objectProperty = objectProperties[dataProperty.key] || null;
+				var conditionKey = (dataProperty.condition || '').replace('.', ' for:');
+				if (!(conditionKey in self.properties)) {
+					self.properties[conditionKey] = {};
+				}
+				self.properties[conditionKey][dataProperty.key] = {
+					key: dataProperty.key,
+					shortName: objectProperty != null ? objectProperty.shortName : dataProperty.key,
+					value: dataProperty.value,
+				};
+				if (dataProperty.value == null || (objectProperty.base == true && dataProperty.value != 0)) {
+					if (!(conditionKey in propertyConditions)) {
+						propertyConditions[conditionKey] = [];
+						self.propertyKeys.push({
+							condition: conditionKey,
+							keys: propertyConditions[conditionKey]
+						});
+					}
+					propertyConditions[conditionKey].push(dataProperty.key);
+				}
+			});
+		}
+		Enchant.prototype = Mat.prototype;
+		Enchant.prototype.constructior = Enchant;
+
 		var self = this;
 		self.objects = {};
 		self.resource = $resource('/data/objects/:type/:key.json', { type: '@type', key: '@key' });
@@ -738,10 +837,13 @@
 						object = new Mat(data);
 					}
 					else if (type == 'equip') {
-						object = new Equip(data);
+						object = new Equip(data, self);
 					}
 					else if (type == 'set') {
 						object = new Set(data, self);
+					}
+					else if (type == 'enchant') {
+						object = new Enchant(data, self);
 					}
 					var finalize = function() {
 						self.objects[type][key] = object;
@@ -1333,6 +1435,7 @@
 			properties: [],
 			selector: {}
 		};
+		self.limitEnchants = true;
 		self.screenshot = {
 			expanded: false,
 			action: 'none',
@@ -1403,9 +1506,7 @@
 						}
 					});
 				}
-				self.object.setQuality(2).then(function() {
-					self.object.setEnhance(null);
-				});
+				self.object.setUpgrades(null, null, null, null);
 			});
 			var screenshotDefer = $q.defer();
 			promises.push(screenshotDefer.promise);

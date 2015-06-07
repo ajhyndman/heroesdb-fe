@@ -13,7 +13,7 @@
 		</div>
 	</div>
 	<div class="title" layout="horizontal" layout-align="start center">
-		<div class="icon"><img width="40" height="40" ng-src="/data/icons/{{object.iconID ? object.iconID : 0}}.png" /></div>
+		<div class="icon"><img width="40" height="40" ng-src="/data/icons/{{object.iconID ? object.iconID : 'blank'}}.png" /></div>
 		<div>
 			<span class="name rarity{{object.rarity}}">{{card ? object.name : object.baseName}}</span>
 			<div class="classification" ng-if="object.classification"><span>{{object.classification}}</span></div>

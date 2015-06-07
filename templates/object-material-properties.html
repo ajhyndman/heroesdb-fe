@@ -1,4 +1,4 @@
-<ul class="properties" ng-if="object.properties">
+<ul class="properties" ng-if="object.type == 'equip' || object.type == 'set'">
 	<li ng-repeat="key in (card ? object.propertyKeys : object.basePropertyKeys)">
 		<span class="property">
 			<span class="key">{{object.properties[key].shortName}}</span>
@@ -11,4 +11,17 @@
 		</span>
 	</li>
 </ul>
+<dl class="properties" ng-if="object.type == 'enchant'">
+	<dt ng-repeat-start="key in object.propertyKeys" ng-if="key.condition != ''">{{key.condition}}</dt>
+	<dd ng-repeat-end>
+		<ul class="properties">
+			<li ng-repeat="propertyKey in key.keys">
+				<span ng-class="{ property: object.properties[key.condition][propertyKey].value, effect: !object.properties[key.condition][propertyKey].value }">
+					<span class="key">{{object.properties[key.condition][propertyKey].shortName}}</span>
+					<span class="value">{{object.properties[key.condition][propertyKey].value}}{{!$last ? ',' : '' }}</span>
+				</span>
+			</li>
+		</ul>
+	</dd>
+</dl>
 <div class="description" ng-if="object.description">{{object.description}}</div>

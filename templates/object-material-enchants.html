@@ -1,0 +1,34 @@
+<div id="enchants-container" layout-md="horizontal" layout-sm="vertical">
+	<div class="enchants prefix" layout="vertical" flex-md="50" flex-sm>
+		<div class="slot" layout="horizontal" layout-align="center center">
+			<div><span>Prefix Enchant</span></div>
+		</div>
+		<ul>
+			<li ng-repeat="enchant in object.enchants.prefix | limitTo: card.limitEnchants ? 6 : 999" ng-click="object.toggleEnchant(enchant.prefix, enchant.key);" ng-class="{ 'selected': enchant.key == object.prefixEnchant.key }">
+				<div layout="horizontal" layout-align="start center">
+					<div class="icon" object-hovercard="{{enchant.key}}.enchant"><img width="30" height="30" ng-src="/data/icons/enchant_scroll.png" /></div>
+					<span class="name rarity2" flex>{{enchant.name}}</span>
+					<span>r{{enchant.rank}}</span>
+				</div>
+			</li>
+		</ul>
+		<div class="limit" ng-if="object.enchants.prefix.length > 6 && card.limitEnchants == true" ng-click="card.limitEnchants = false">Show {{object.enchants.prefix.length - 6}} more</div>
+		<div class="limit" ng-if="object.enchants.prefix.length > 6 && card.limitEnchants == false" ng-click="card.limitEnchants = true">Show less</div>
+	</div>
+	<div class="enchants suffix" layout="vertical" flex-md="50" flex-sm>
+		<div class="slot" layout="horizontal" layout-align="center center">
+			<div><span>Suffix Enchant</span></div>
+		</div>
+		<ul>
+			<li ng-repeat="enchant in object.enchants.suffix | limitTo: card.limitEnchants ? 6 : 999" ng-click="object.toggleEnchant(enchant.prefix, enchant.key);" ng-class="{ 'selected': enchant.key == object.suffixEnchant.key }">
+				<div layout="horizontal" layout-align="start center">
+					<div class="icon" object-hovercard="{{enchant.key}}.enchant"><img width="30" height="30" ng-src="/data/icons/enchant_scroll.png" /></div>
+					<span class="name rarity2" flex>{{enchant.name}}</span>
+					<span>r{{enchant.rank}}</span>
+				</div>
+			</li>
+		</ul>
+		<div class="limit" ng-if="object.enchants.suffix.length > 6 && card.limitEnchants == true" ng-click="card.limitEnchants = false">Show {{object.enchants.suffix.length - 6}} more</div>
+		<div class="limit" ng-if="object.enchants.suffix.length > 6 && card.limitEnchants == false" ng-click="card.limitEnchants = true">Show less</div>
+	</div>
+</div>

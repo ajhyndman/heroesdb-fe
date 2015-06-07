@@ -2,6 +2,7 @@
 	<div ng-include="'/templates/object-material-title.html'"></div>
 	<div class="main">
 		<div ng-include="'/templates/object-material-properties.html'"></div>
+		<div ng-include="'/templates/object-material-enchant-chances.html'" ng-if="object.type == 'enchant'"></div>
 	</div>
 	<div ng-include="'/templates/object-material-requirements.html'"></div>
 </div>

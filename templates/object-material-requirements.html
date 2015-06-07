@@ -9,4 +9,5 @@
 		<span ng-repeat="skill in object.requiredSkills">{{skill.name}} rank {{skill.rank}}{{!$last ? ' and ' : ''}}</span>
 		<span>or above.</span>
 	</span>
+	<span ng-if="object.restrictionsText">{{object.restrictionsText}}</span>
 </div>

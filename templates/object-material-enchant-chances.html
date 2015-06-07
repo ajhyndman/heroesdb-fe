@@ -1,0 +1,11 @@
+<div class="enchant-chances" layout="vertical">
+	<div class="description">{{object.minSuccessChance}}% to {{object.maxSuccessChance}}% success chance</div>
+	<div class="success" layout="horizontal">
+		<div class="min" ng-style="{ width: object.minSuccessChance + '%' };">&nbsp;</div>
+		<div class="max" ng-style="{ width: object.maxSuccessChance - object.minSuccessChance + '%' };">&nbsp;</div>
+	</div>
+	<div class="fail" layout="horizontal" ng-if="object.breakChance != 0">
+		<div class="break" ng-style="{ width: object.breakChance + '%' };"></div>
+	</div>
+	<div class="description">{{object.breakChance == 0 ? 'doesn\'t break' : (object.breakChance + '% break chance')}} on failure</div>
+</div>

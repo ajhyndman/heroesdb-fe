@@ -10,7 +10,7 @@
 		<tr ng-class="{ 'selected': object.partIsEnabled(part.key) }" ng-click="object.togglePart(part.key);" ng-repeat="part in object.parts">
 			<td>
 				<div class="icon" object-hovercard="{{part.key}}.equip">
-					<img width="30" height="30" ng-src="/data/icons/{{part.iconID ? part.iconID : 0}}.png" />
+					<img width="30" height="30" ng-src="/data/icons/{{part.iconID ? part.iconID : 'blank'}}.png" />
 				</div>
 			</td>
 			<td>
