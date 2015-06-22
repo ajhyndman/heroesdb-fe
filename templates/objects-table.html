@@ -28,7 +28,7 @@
 			<tr ng-repeat="object in table.objects" ng-click="table.selectObject(object.key)" ng-class="{ 'selected': object.key == table.selectedObjectKey }">
 				<td>
 					<div class="icon" object-hovercard="{{object.key}}.{{object.type}}">
-						<img width="40" height="40" ng-src="/data/icons/{{object.iconID ? object.iconID : 'blank'}}.png" />
+						<img width="40" height="40" ng-src="/data/icons/{{object.iconKey ? object.iconKey : 'blank'}}.png" />
 					</div>
 				</td>
 				<td>

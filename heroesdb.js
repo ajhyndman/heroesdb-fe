@@ -283,7 +283,7 @@
 			var self = this;
 			self.type = 'mat';
 			self.key = data.key;
-			self.iconID = data.iconID || null;
+			self.iconKey = data.iconKey || null;
 			self.name = data.name;
 			self.baseName = data.name;
 			self.classification = data.classification;
@@ -600,7 +600,7 @@
 								if (matAdded == false) {
 									newMats.push({
 										key: mat.key,
-										iconID: mat.iconID,
+										iconKey: mat.iconKey,
 										name: mat.name,
 										rarity: mat.rarity,
 										order: mat.order,
@@ -774,7 +774,7 @@
 			Mat.apply(this, arguments);
 			var self = this;
 			self.type = 'enchant';
-			self.iconID = 'enchant_scroll';
+			self.iconKey = 'enchant_scroll';
 			self.classification = 'Enchant Scroll, Rank ' + data.rank + ' ' + (data.prefix ? 'Prefix' : 'Suffix');
 			self.rarity = 2;
 			self.properties = {};
@@ -1547,7 +1547,7 @@
 						if (!(key in self.enhance.mats)) {
 							self.enhance.mats[key] = {
 								key: key,
-								iconID: mat.iconID,
+								iconKey: mat.iconKey,
 								name: mat.name,
 								rarity: mat.rarity,
 								order: mat.order,
