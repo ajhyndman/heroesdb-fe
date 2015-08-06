@@ -27,10 +27,9 @@
 	<div class="recipe pc" layout="vertical" flex-md="50" flex-sm>
 		<div class="crafted-by" layout="horizontal" layout-align="center center">
 			<div ng-if="object.recipes.pc.expertises">
-				<span ng-repeat="expertise in object.recipes.pc.expertises">
+				<span class="expertiseAndProficiency" ng-repeat="expertise in object.recipes.pc.expertises">
 					<span class="expertise">{{expertise.name}}</span>
-					<span class="proficiency">({{expertise.experienceRequired}})</span>
-					{{!$last ? ' and ' : '' }}
+					<span class="proficiency">({{expertise.experienceRequired}}){{!$last ? ', ' : '' }}</span>
 				</span>
 			</div>
 			<div ng-if="!(object.recipes.pc)">

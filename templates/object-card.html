@@ -4,8 +4,9 @@
 			<div ng-include="'/templates/object-material-title.html'"></div>
 			<div class="main">
 				<div ng-include="'/templates/object-material-properties.html'"></div>
+				<div ng-include="'/templates/object-material-equip-parts.html'" ng-if="object.type == 'equip' && object.equipParts"></div>
 				<div ng-include="'/templates/object-material-enhance.html'" ng-if="object.enhanceTypeKey && object.enhanceTypeKey != 'set'"></div>
-				<div ng-include="'/templates/object-material-parts.html'" ng-if="object.parts"></div>
+				<div ng-include="'/templates/object-material-parts.html'" ng-if="object.type == 'set'"></div>
 				<div ng-include="'/templates/object-material-enchants.html'" ng-if="object.enchants"></div>
 				<div ng-include="'/templates/object-material-recipes.html'" ng-if="object.recipes"></div>
 			</div>

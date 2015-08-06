@@ -2,12 +2,20 @@
 	<li ng-repeat="key in (card ? object.propertyKeys : object.basePropertyKeys)">
 		<span class="property">
 			<span class="key">{{object.properties[key].shortName}}</span>
-			<span class="value">{{card ? object.properties[key].value : object.properties[key].baseValue}}{{!$last || (card && object.qualityTypeKey) ? ',' : '' }}</span>
+			<span class="value">{{card ? object.properties[key].value : object.properties[key].baseValue}}{{!$last || (card && object.type == 'equip' && object.parts != null) || (card && object.qualityTypeKey) ? ',' : '' }}</span>
 		</span>
+	</li>
+	<li class="menu-container" ng-if="card && object.equipParts != null">
+		<span class="property rarity">
+			<span class="name rarity{{object.rarity}}" ng-click="card.grade.openMenu();">{{card.grade.name}}</span>{{ (card && object.qualityTypeKey) ? ',' : '' }}
+		</span>
+		<ol class="menu z3" ng-show="card.grade.menuOpen" ng-mouseleave="card.grade.closeMenu();">
+			<li ng-click="card.grade.set(grade);" ng-repeat="grade in card.grade.options">{{grade.menuText}}</li>
+		</ol>
 	</li>
 	<li ng-if="card && object.qualityTypeKey">
 		<span class="property quality">
-			<i class="fa" ng-class="{ 'fa-star': object.quality >= level, 'fa-star-o': object.quality < level }" ng-click="object.setQuality(level)" ng-repeat="level in [1, 2, 3, 4, 5]"></i>
+			<i class="fa" ng-class="{ 'fa-star': object.quality >= level, 'fa-star-o': object.quality < level }" ng-click="object.setQuality(level)" ng-repeat="level in card.getQualityOptions()"></i>
 		</span>
 	</li>
 </ul>

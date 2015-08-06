@@ -1,0 +1,15 @@
+<ul class="equip-parts" layout="horizontal">
+	<li class="equip-part" ng-repeat="part in object.equipParts[object.rarity]" flex="20">
+		<div layout="horizontal" flex>
+			<div class="icon"><img width="30" height="30" ng-src="/data/icons/{{part.iconKey}}.png" /></div>
+			<ul>
+				<li ng-repeat="key in part.propertyKeys">
+					<span class="property">
+						<span class="key">{{part.properties[key].shortName}}</span>
+						<span class="value">{{part.properties[key].value}}{{!$last ? ',' : '' }}</span>
+					</span>
+				</li>
+			</ol>
+		</div>
+	</li>
+</ul>

@@ -337,7 +337,7 @@ div.object-material ul.properties span.key {
 	font-weight: 500;
 }
 
-div.object-material ul.properties li {
+div.object-material ul.properties > li {
 	display: inline;
 	padding-right: 0.3em;
 }
@@ -348,6 +348,42 @@ div.object-material ul.properties li span.quality i {
 
 div.object-material ul.properties + div.description {
 	margin-top: 1em;
+}
+
+
+
+div.object-material ul.equip-parts li.equip-part > div {
+  position: relative;
+	padding: 1em 0 0 1em;
+	border-top: 1px solid #ddd;
+}
+
+div.object-material ul.equip-parts li.equip-part > div:before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: calc(1em + 30px);
+  width: 1px;
+  background: #ddd;
+}
+
+div.object-material ul.equip-parts li.equip-part:last-child > div:after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: calc(1em + 30px);
+  width: 1px;
+  background: #ddd;
+}
+
+div.object-material ul.equip-parts span.property {
+	font-size: 0.9em;
+}
+
+div.object-material ul.equip-parts span.property span.key {
+	font-weight: 500;
 }
 
 
@@ -555,9 +591,17 @@ div.object-material div.recipe div.crafted-by {
 	border-bottom: 1px solid #ddd;
 }
 
+div.object-material div.recipe.pc div.crafted-by {
+	padding: 1em;
+	text-align: center;
+}
+
 div.object-material div.recipe div.crafted-by img {
 	cursor: help;
 	padding-right: 0.5em;
+}
+
+div.object-material div.recipe div.crafted-by span.expertiseAndProficiency {
 }
 
 div.object-material div.recipe div.crafted-by span.expertise {
@@ -782,6 +826,35 @@ div#object-card > div:last-child > * {
 	padding-bottom: 1.5em;
 }
 
+div#object-card li.menu-container {
+	position: relative;
+}
+
+div#object-card li.menu-container > span {
+	cursor: pointer;
+}
+
+div#object-card ol.menu {
+	position: absolute;
+	z-index: 150;
+	top: 0;
+	left: 0;
+	margin: 10px 0 0 10px;
+	padding: 1em 0;
+	font-weight: 300;
+	background-color: #f5f5f5;
+}
+
+div#object-card ol.menu li {
+	padding: 0.3em 2em 0.3em 1em;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+div#object-card ol.menu li:hover {
+	background-color: #e0e0e0;
+}
+
 
 
 div#items table#table td div.icon,
@@ -834,6 +907,11 @@ div.object-material span.name.rarity4 {
 	color: #8e24aa;
 }
 
+div#items table#table td span.name.rarity5,
+div.object-material span.name.rarity5 {
+	color: #fb8c00;
+}
+
 
 
 #object-card div.title-container.with-screenshots {
@@ -865,6 +943,10 @@ div.object-material span.name.rarity4 {
 
 #object-card div.title-container.with-screenshots span.name.rarity4 {
 	color: #ba68c8;
+}
+
+#object-card div.title-container.with-screenshots span.name.rarity5 {
+	color: #ffb74d;
 }
 
 #object-card div.screenshots {
