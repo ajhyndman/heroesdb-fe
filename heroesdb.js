@@ -602,11 +602,11 @@
 			function getScreenshotCharacterIndex(state) {
 				var requiredCharacter = null;
 				if (state.groupKey == 'armor' && state.typeKey == 'set' && 'categoryKey' in state) {
-					var categories = { 'lann': 1, 'fiona': 2, 'evie': 4, 'karok': 8, 'kai': 16, 'vella': 32, 'hurk': 64, 'lynn': 128, 'arisha': 256 };
+					var categories = { 'lann': 1, 'fiona': 2, 'evie': 4, 'karok': 8, 'kai': 16, 'vella': 32, 'hurk': 64, 'lynn': 128, 'arisha': 256, 'sylas': 512 };
 					requiredCharacter = categories[state.categoryKey];
 				}
 				else if (state.groupKey == 'weapon' && state.typeKey == 'all' && 'categoryKey' in state) {
-					var categories = { 'dualsword': 1, 'dualspear': 1, 'longsword': 2, 'hammer': 2, 'staff': 4, 'scythe': 4, 'pillar': 8, 'blaster': 8, 'bow': 16, 'crossgun': 16, 'dualblade': 32, 'greatsword': 64, 'battleglaive': 128, 'longblade': 256 };
+					var categories = { 'dualsword': 1, 'dualspear': 1, 'longsword': 2, 'hammer': 2, 'staff': 4, 'scythe': 4, 'pillar': 8, 'blaster': 8, 'bow': 16, 'crossgun': 16, 'dualblade': 32, 'greatsword': 64, 'battleglaive': 128, 'longblade': 256, 'phantomdagger': 512 };
 					requiredCharacter = categories[state.categoryKey];
 				}
 				if (requiredCharacter != null) {
