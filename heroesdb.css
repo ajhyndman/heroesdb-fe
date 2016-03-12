@@ -38,6 +38,7 @@ ul, ol, dl, li, dt, dd {
 
 abbr {
 	border-bottom: 1px dotted;
+	text-decoration: none;
 	cursor: help;
 }
 
